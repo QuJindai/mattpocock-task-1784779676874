@@ -77,6 +77,30 @@ async function capture({ name, query = '', expect = 'ready', verify }) {
 
     await page.waitForTimeout(2_000);
 
+    let orientation = null;
+    if (expect === 'ready') {
+      orientation = await page.evaluate(() => {
+        const vrm = window.__vrmLab?.vrm;
+        return vrm
+          ? {
+              metaVersion: String(vrm.meta?.metaVersion ?? ''),
+              rotationY: vrm.scene?.rotation?.y,
+            }
+          : null;
+      });
+      if (!orientation || !Number.isFinite(orientation.rotationY)) {
+        throw new Error(`${name}: runtime VRM handle or rotation is unavailable`);
+      }
+      if (
+        orientation.metaVersion === '0' &&
+        Math.abs(Math.abs(orientation.rotationY) - Math.PI) > 0.05
+      ) {
+        throw new Error(
+          `${name}: VRM0 front-facing correction missing; rotationY=${orientation.rotationY}`,
+        );
+      }
+    }
+
     if (verify) {
       await verify(page);
     }
@@ -103,6 +127,7 @@ async function capture({ name, query = '', expect = 'ready', verify }) {
     results.set(name, {
       fullHash: hash(fullBuffer),
       canvasHash: hash(canvasBuffer),
+      orientation,
       url: page.url(),
     });
     logs.push(`[${name}][pass] ${expect}`);
