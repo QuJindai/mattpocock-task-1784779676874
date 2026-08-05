@@ -1,0 +1,55 @@
+name: V4.8 Production Acceptance
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/v48-liveliness]
+    paths:
+      - v48-motion-deterministic.mjs
+      - .github/workflows/v48-production-acceptance.yml
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/v48-liveliness
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Prepare Production visual gate
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          visual=Path('v47-production-acceptance.mjs').read_text()
+          visual=visual.replace('visual-avatar-a-v4-7-20260805','visual-avatar-a-v4-8-20260805')
+          visual=visual.replace('v47-production-acceptance','v48-production-visual')
+          Path('v48-production-visual.mjs').write_text(visual)
+          PY
+          node --check v48-production-visual.mjs
+          node --check v48-motion-deterministic.mjs
+      - name: Install browser controller
+        run: |
+          npm install playwright pngjs
+          google-chrome --version || google-chrome-stable --version
+      - name: Validate V4.8 Production visual baseline
+        env:
+          V47_PRODUCTION_URL: https://vrm-showcase-lab.vercel.app
+        run: node v48-production-visual.mjs
+      - name: Validate V4.8 Production liveliness
+        env:
+          V48_URL: https://vrm-showcase-lab.vercel.app
+          V48_OUT: v48-production-motion
+          CHROME_PATH: /usr/bin/google-chrome
+        run: node v48-motion-deterministic.mjs
+      - name: Upload V4.8 Production evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v48-production-acceptance
+          path: |
+            v48-production-visual
+            v48-production-motion
+          retention-days: 14
