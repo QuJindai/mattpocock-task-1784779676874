@@ -85,13 +85,42 @@ async function capture({ name, query = '', expect = 'ready', verify }) {
             };
           }
         }
+        const projectPoint = point => {
+          if (!point || !lab.camera) return null;
+          lab.camera.updateMatrixWorld(true);
+          const view = lab.camera.matrixWorldInverse.elements;
+          const proj = lab.camera.projectionMatrix.elements;
+          const [x, y, z] = point;
+          const vx = view[0]*x + view[4]*y + view[8]*z + view[12];
+          const vy = view[1]*x + view[5]*y + view[9]*z + view[13];
+          const vz = view[2]*x + view[6]*y + view[10]*z + view[14];
+          const vw = view[3]*x + view[7]*y + view[11]*z + view[15];
+          const cx = proj[0]*vx + proj[4]*vy + proj[8]*vz + proj[12]*vw;
+          const cy = proj[1]*vx + proj[5]*vy + proj[9]*vz + proj[13]*vw;
+          const cz = proj[2]*vx + proj[6]*vy + proj[10]*vz + proj[14]*vw;
+          const cw = proj[3]*vx + proj[7]*vy + proj[11]*vz + proj[15]*vw;
+          return [cx/cw, cy/cw, cz/cw];
+        };
+        const fitDebug = lab.fitDebug ?? null;
         return {
           metaVersion: String(vrm.meta?.metaVersion ?? vrm.meta?.specVersion ?? ''),
           rotationY: vrm.scene?.rotation?.y,
           state: lab.state,
-          fitDebug: lab.fitDebug ?? null,
+          fitDebug,
+          projections: fitDebug ? {
+            head: projectPoint(fitDebug.head),
+            hips: projectPoint(fitDebug.hips),
+            leftFoot: projectPoint(fitDebug.leftFoot),
+            rightFoot: projectPoint(fitDebug.rightFoot),
+          } : null,
           pixelBounds,
-          camera: { x: lab.camera?.position?.x, y: lab.camera?.position?.y, z: lab.camera?.position?.z, fov: lab.camera?.fov },
+          camera: {
+            x: lab.camera?.position?.x,
+            y: lab.camera?.position?.y,
+            z: lab.camera?.position?.z,
+            fov: lab.camera?.fov,
+            quaternion: lab.camera?.quaternion?.toArray?.(),
+          },
         };
       });
       if (!runtime || !Number.isFinite(runtime.rotationY)) throw new Error(`${name}: runtime VRM handle unavailable`);
