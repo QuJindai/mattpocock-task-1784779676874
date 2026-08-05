@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 
 const baseUrl = process.env.VRM_URL || 'https://vrm-showcase-lab.vercel.app';
 const outputDir = 'v4-visual-smoke';
-const buildId = 'visual-alicia-v4-2-20260805';
+const buildId = 'visual-alicia-v4-3-20260805';
 const defaultModel = 'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r110/examples/models/vrm/Alicia/AliciaSolid.vrm';
 
 await mkdir(outputDir, { recursive: true });
