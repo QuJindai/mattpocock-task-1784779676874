@@ -1,0 +1,33 @@
+name: Model Bake-off
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - model-bakeoff.mjs
+      - .github/workflows/model-bakeoff.yml
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright
+        run: |
+          npm init -y
+          npm install playwright
+          npx playwright install --with-deps chromium
+      - name: Compare online VRM candidates
+        run: node model-bakeoff.mjs
+      - name: Upload model comparison
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vrm-model-bakeoff
+          path: model-bakeoff
+          retention-days: 14
