@@ -29,6 +29,8 @@ test('app supports studio showcase capture and compare routes', async () => {
   assert.match(app, /rendererKind:\s*['"]frame-blend['"]/);
   assert.match(app, /state\.time/);
   assert.match(app, /history\.replaceState/);
+  assert.match(app, /new URL\(location\.href\)/);
+  assert.doesNotMatch(app, /replaceState\([^\n]+location\.pathname/);
   assert.match(app, /timeline\.interact/);
   assert.match(app, /asset=background/);
   assert.match(app, /import\.meta\.url/);
