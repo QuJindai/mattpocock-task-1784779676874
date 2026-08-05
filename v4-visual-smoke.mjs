@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 
 const baseUrl = process.env.VRM_URL || 'https://vrm-showcase-lab.vercel.app';
 const outputDir = 'v4-visual-smoke';
-const buildId = 'visual-alicia-v4-20260805';
+const buildId = 'visual-alicia-v4-1-20260805';
 const defaultModel = 'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r110/examples/models/vrm/Alicia/AliciaSolid.vrm';
 
 await mkdir(outputDir, { recursive: true });
@@ -70,7 +70,7 @@ for (const [name, query] of Object.entries(scenarios)) {
       undefined,
       { timeout: 90_000 },
     );
-    await page.waitForTimeout(2_500);
+    await page.waitForTimeout(3_200);
 
     const metrics = await page.evaluate(() => {
       const lab = window.__vrmLab;
@@ -108,6 +108,8 @@ for (const [name, query] of Object.entries(scenarios)) {
       return {
         buildId: lab.buildId ?? null,
         state: lab.state ?? null,
+        fitDebug: lab.fitDebug ?? null,
+        scenePosition: lab.vrm.scene.position.toArray(),
         metaVersion: String(lab.vrm.meta?.metaVersion ?? lab.vrm.meta?.specVersion ?? ''),
         count,
         averageLuma: count ? luma / count : null,
