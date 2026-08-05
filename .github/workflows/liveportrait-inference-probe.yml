@@ -1,0 +1,41 @@
+name: LivePortrait Single Frame Probe
+
+on:
+  push:
+    branches: [avatar-showcase-lab]
+    paths:
+      - liveportrait-inference-probe.mjs
+      - package.json
+      - .github/workflows/liveportrait-inference-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  infer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pinned legacy client
+        run: npm install
+
+      - name: Run real single-frame inference
+        run: node liveportrait-inference-probe.mjs
+
+      - name: Upload inference evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: liveportrait-single-frame-probe
+          path: liveportrait-probe/
+          if-no-files-found: error
+          retention-days: 7
