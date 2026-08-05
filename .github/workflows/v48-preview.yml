@@ -1,0 +1,68 @@
+name: V4.8 Liveliness Preview
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/v48-liveliness]
+    paths:
+      - v48-build.py
+      - test_v48_build.py
+      - v48-liveliness-smoke.mjs
+      - .github/workflows/v48-preview.yml
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/v48-liveliness
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run source-lock tests
+        run: python test_v48_build.py -v
+      - name: Build V4.8 candidate
+        run: python v48-build.py
+      - name: Verify browser module syntax
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          source=Path('v48-site/index.html').read_text()
+          match=re.search(r'<script type="module">(.*?)</script>',source,re.S)
+          assert match
+          Path('/tmp/v48-module.mjs').write_text(match.group(1))
+          PY
+          node --check /tmp/v48-module.mjs
+          grep -q 'visual-avatar-a-v4-8-20260805' v48-site/index.html
+      - name: Install browser controller
+        run: |
+          npm install playwright pngjs wait-on
+          google-chrome --version || google-chrome-stable --version
+      - name: Start V4.8 Preview
+        run: |
+          cd v48-site
+          python3 -m http.server 4173 --bind 127.0.0.1 > ../v48-preview-server.log 2>&1 &
+          cd ..
+          npx wait-on http://127.0.0.1:4173 --timeout 120000
+      - name: Run liveliness and visual gates
+        env:
+          V48_URL: http://127.0.0.1:4173
+          CHROME_PATH: /usr/bin/google-chrome
+        run: node v48-liveliness-smoke.mjs
+      - name: Upload V4.8 Preview evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v48-liveliness-preview
+          path: |
+            v48-liveliness-smoke
+            v48-site/index.html
+            v48-site/metadata.json
+            v48-preview-server.log
+          retention-days: 14
