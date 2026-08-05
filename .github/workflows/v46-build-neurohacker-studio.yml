@@ -1,0 +1,108 @@
+name: V4.6 Build Neurohacker Studio
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/v46-build-neurohacker-studio.yml
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout controller repository
+        uses: actions/checkout@v4
+        with:
+          path: controller
+      - name: Checkout CharacterStudio
+        uses: actions/checkout@v4
+        with:
+          repository: M3-org/CharacterStudio
+          ref: main
+          path: studio
+      - name: Checkout composable character assets
+        uses: actions/checkout@v4
+        with:
+          repository: memelotsqui/character-assets
+          ref: main
+          path: studio/public/character-assets
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: studio/package-lock.json
+      - name: Configure Neurohacker-only catalog
+        working-directory: studio
+        run: |
+          cat > public/manifest.json <<'JSON'
+          {
+            "characters": [
+              {
+                "name": "V4.6 Modern Companion",
+                "description": "Short hair · sweater · modern outfit",
+                "portrait": "./character-assets/neurohacker/neurohacker_icon.png",
+                "manifest": "./character-assets/neurohacker/manifest.json",
+                "format": "vrm"
+              }
+            ],
+            "loras": [],
+            "sprites": [],
+            "thumbnails": [],
+            "defaultAnimations": [
+              {
+                "name": "T-Pose",
+                "description": "T-Pose",
+                "location": "./animations/T-Pose.fbx",
+                "icon": "|"
+              },
+              {
+                "name": "Waving",
+                "description": "Basic Waving Animation",
+                "location": "./animations/Waving.fbx",
+                "icon": "|"
+              }
+            ]
+          }
+          JSON
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          catalog=json.loads(Path('public/manifest.json').read_text())
+          manifest=json.loads(Path('public/character-assets/neurohacker/manifest.json').read_text())
+          assert len(catalog['characters']) == 1
+          groups={item['trait']: {entry['id'] for entry in item['collection']} for item in manifest['traits']}
+          required={
+              'head': {'short','hairshort'},
+              'chest': {'sweater','simpleshirt'},
+              'body': {'0'},
+              'eyes': {'regulareyes'},
+          }
+          for group, ids in required.items():
+              assert group in groups, group
+              assert ids & groups[group], (group, ids, groups[group])
+          print(json.dumps({'groups': sorted(groups), 'targetTraits': required}, default=list, indent=2))
+          PY
+      - name: Install dependencies
+        working-directory: studio
+        run: npm ci
+      - name: Run tests
+        working-directory: studio
+        run: npm run test:run -- --passWithNoTests
+      - name: Build production studio
+        working-directory: studio
+        run: npm run build
+      - name: Verify dist
+        working-directory: studio
+        run: |
+          test -s dist/index.html
+          grep -R "V4.6 Modern Companion" dist >/dev/null
+          du -sh dist
+          find dist -maxdepth 2 -type f | sort | head -100
+      - name: Upload production dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: v46-neurohacker-studio-dist
+          path: studio/dist
+          retention-days: 14
