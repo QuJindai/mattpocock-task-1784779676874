@@ -48,16 +48,71 @@ async function capture({ name, query = '', expect = 'ready', verify }) {
       runtime = await page.evaluate(() => {
         const lab = window.__vrmLab;
         const vrm = lab?.vrm;
-        return vrm ? {
+        if (!vrm) return null;
+        const renderer = lab.renderer;
+        const gl = renderer?.getContext?.();
+        const canvas = renderer?.domElement;
+        let pixelBounds = null;
+        if (gl && canvas) {
+          const width = canvas.width;
+          const height = canvas.height;
+          const pixels = new Uint8Array(width * height * 4);
+          gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+          let minX = width, maxX = -1, minYGl = height, maxYGl = -1, count = 0;
+          for (let y = 0; y < height; y += 1) {
+            for (let x = 0; x < width; x += 1) {
+              const alpha = pixels[(y * width + x) * 4 + 3];
+              if (alpha > 24) {
+                count += 1;
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minYGl) minYGl = y;
+                if (y > maxYGl) maxYGl = y;
+              }
+            }
+          }
+          if (count > 0) {
+            pixelBounds = {
+              minX,
+              maxX,
+              minY: height - 1 - maxYGl,
+              maxY: height - 1 - minYGl,
+              width: maxX - minX + 1,
+              height: maxYGl - minYGl + 1,
+              count,
+              canvasWidth: width,
+              canvasHeight: height,
+            };
+          }
+        }
+        return {
           metaVersion: String(vrm.meta?.metaVersion ?? vrm.meta?.specVersion ?? ''),
           rotationY: vrm.scene?.rotation?.y,
           state: lab.state,
+          fitDebug: lab.fitDebug ?? null,
+          pixelBounds,
           camera: { x: lab.camera?.position?.x, y: lab.camera?.position?.y, z: lab.camera?.position?.z, fov: lab.camera?.fov },
-        } : null;
+        };
       });
       if (!runtime || !Number.isFinite(runtime.rotationY)) throw new Error(`${name}: runtime VRM handle unavailable`);
       if (runtime.metaVersion === '0' && Math.abs(Math.abs(runtime.rotationY) - Math.PI) > .05) {
         throw new Error(`${name}: VRM0 front correction missing; rotationY=${runtime.rotationY}`);
+      }
+      const fit = runtime.fitDebug;
+      const footY = Math.min(fit?.leftFoot?.[1] ?? Infinity, fit?.rightFoot?.[1] ?? Infinity);
+      const headY = fit?.head?.[1];
+      if (!fit || !Number.isFinite(headY) || !Number.isFinite(footY)) {
+        throw new Error(`${name}: humanoid fit diagnostics unavailable: ${JSON.stringify(fit)}`);
+      }
+      if (Math.abs(footY - 0.015) > 0.08 || headY < 1.15 || headY > 1.85) {
+        throw new Error(`${name}: humanoid stage fit invalid: ${JSON.stringify(fit)}`);
+      }
+      const bounds = runtime.pixelBounds;
+      if (!bounds || bounds.count < 10_000) {
+        throw new Error(`${name}: rendered avatar pixels unavailable: ${JSON.stringify(bounds)}`);
+      }
+      if (bounds.height < bounds.canvasHeight * 0.42 || bounds.minY > bounds.canvasHeight * 0.52) {
+        throw new Error(`${name}: avatar framing invalid: ${JSON.stringify(bounds)}`);
       }
     }
     if (verify) await verify(page, runtime);
