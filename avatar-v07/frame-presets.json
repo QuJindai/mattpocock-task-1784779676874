@@ -1,0 +1,10 @@
+{
+  "idle-open": {"pitch":0,"yaw":0,"roll":0,"blink":0,"eyebrow":0,"wink":0,"pupilX":0,"pupilY":0,"aaa":0,"eee":0,"woo":0,"smile":0.05,"cropFactor":1.7},
+  "blink-half": {"pitch":0,"yaw":0,"roll":0,"blink":2.5,"eyebrow":0,"wink":0,"pupilX":0,"pupilY":0,"aaa":0,"eee":0,"woo":0,"smile":0.05,"cropFactor":1.7},
+  "blink-closed": {"pitch":0,"yaw":0,"roll":0,"blink":5,"eyebrow":0,"wink":0,"pupilX":0,"pupilY":0,"aaa":0,"eee":0,"woo":0,"smile":0.05,"cropFactor":1.7},
+  "happy": {"pitch":-1,"yaw":2,"roll":1,"blink":-1,"eyebrow":4,"wink":0,"pupilX":0,"pupilY":-1,"aaa":0,"eee":0,"woo":0,"smile":0.78,"cropFactor":1.7},
+  "listen": {"pitch":-3,"yaw":8,"roll":2,"blink":-1,"eyebrow":2,"wink":0,"pupilX":2,"pupilY":-1,"aaa":0,"eee":0,"woo":0,"smile":0.18,"cropFactor":1.7},
+  "mouth-a": {"pitch":0,"yaw":0,"roll":0,"blink":-1,"eyebrow":1,"wink":0,"pupilX":0,"pupilY":0,"aaa":42,"eee":0,"woo":0,"smile":0.2,"cropFactor":1.7},
+  "mouth-e": {"pitch":0,"yaw":0,"roll":0,"blink":-1,"eyebrow":1,"wink":0,"pupilX":0,"pupilY":0,"aaa":0,"eee":12,"woo":0,"smile":0.18,"cropFactor":1.7},
+  "mouth-u": {"pitch":0,"yaw":0,"roll":0,"blink":-1,"eyebrow":1,"wink":0,"pupilX":0,"pupilY":0,"aaa":0,"eee":0,"woo":12,"smile":0.16,"cropFactor":1.7}
+}
