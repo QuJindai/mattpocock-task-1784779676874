@@ -1,4 +1,5 @@
 import * as Gradio from '@gradio/client';
+import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 
 const outputDir = 'liveportrait-probe';
@@ -50,7 +51,7 @@ function extractUrls(value) {
   return [...new Set(urls)];
 }
 
-async function submitAndWait(app, data, timeoutMs = 480_000) {
+async function submitAndWait(app, data, timeoutMs = 300_000) {
   const events = [];
   const job = app.submit(endpoint, data);
   let latestData = null;
@@ -126,8 +127,16 @@ await writeFile(
 const { app, source, attempt } = await connectWithRetry();
 console.log(`[connected] source=${source} attempt=${attempt} version=${app.config?.version}`);
 
+const uploadStartedAt = Date.now();
+const uploaded = await Gradio.upload(sourceFileData, app.config.root, randomUUID());
+const uploadElapsedMs = Date.now() - uploadStartedAt;
+const uploadedFileData = uploaded?.[0];
+if (!uploadedFileData?.path) throw new Error(`pre-upload returned no server path: ${JSON.stringify(uploaded)}`);
+console.log(`[uploaded] elapsedMs=${uploadElapsedMs} ${JSON.stringify(uploadedFileData)}`);
+await writeFile(`${outputDir}/uploaded.json`, `${JSON.stringify({ uploadElapsedMs, uploadedFileData }, null, 2)}\n`, 'utf8');
+
 const startedAt = Date.now();
-const { value: result, events } = await submitAndWait(app, [0.45, 0.22, sourceFileData, true]);
+const { value: result, events } = await submitAndWait(app, [0.45, 0.22, uploadedFileData, true]);
 const elapsedMs = Date.now() - startedAt;
 const urls = extractUrls(result);
 
@@ -137,7 +146,9 @@ const summary = {
   connectedAttempt: attempt,
   configVersion: app.config?.version || null,
   endpoint,
+  uploadElapsedMs,
   elapsedMs,
+  uploadedFileData,
   result,
   events,
   urls,
