@@ -1,3 +1,4 @@
+// rerun: self-contained V3 production 2026-08-05T02:26Z
 import { chromium } from 'playwright';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
