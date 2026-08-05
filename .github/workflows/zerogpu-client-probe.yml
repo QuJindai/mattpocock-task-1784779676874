@@ -1,0 +1,43 @@
+name: Gradio 1.10 ZeroGPU Probe
+
+on:
+  push:
+    branches: [avatar-showcase-lab]
+    paths:
+      - zerogpu-probe/**
+      - .github/workflows/zerogpu-client-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    defaults:
+      run:
+        working-directory: zerogpu-probe
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Gradio client 1.10
+        run: npm install
+
+      - name: Run ZeroGPU probe
+        run: node probe.mjs
+
+      - name: Upload proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradio-1-10-zerogpu-probe
+          path: zerogpu-probe/artifacts/
+          if-no-files-found: error
+          retention-days: 7
