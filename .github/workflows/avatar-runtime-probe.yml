@@ -1,0 +1,39 @@
+name: Avatar Motion Runtime Probe
+
+on:
+  push:
+    branches: [avatar-showcase-lab]
+    paths:
+      - avatar-runtime-probe.mjs
+      - .github/workflows/avatar-runtime-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6dmZxcmh6dWNqdmt3bm5ianV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM3ODAzNzEsImV4cCI6MjA5OTM1NjM3MX0.pGJ8QeaoEoZBmkftre5w2kesyeM_jWK3MfV3ru8LWt8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Probe runtime health and generation
+        run: node avatar-runtime-probe.mjs
+
+      - name: Upload runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: avatar-motion-runtime-probe
+          path: avatar-runtime-artifacts/
+          if-no-files-found: error
+          retention-days: 14
