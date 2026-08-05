@@ -93,7 +93,7 @@ async function installSpeechMock(context) {
             this.speaking = false;
             trace.push({ type: 'end' });
             utterance.onend?.({ type: 'end' });
-          }, 760);
+          }, 2200);
         }
       },
       cancel() {
@@ -158,26 +158,32 @@ try {
   await page.locator('#speech-text').fill('啊你好');
   await page.locator('#speech-play').click();
   await page.waitForFunction(() => window.__avatarLab?.diagnostics?.controller?.state === 'talk', undefined, { timeout: 10_000 });
-  results.speaking = await screenshot(page, '01-speaking.png');
 
   const lipValues = new Set();
   const mouthFrames = new Set();
+  const samples = [];
   const sampleStarted = Date.now();
-  while (Date.now() - sampleStarted < 680) {
+  while (Date.now() - sampleStarted < 900) {
     const sample = await page.evaluate(() => ({
       lip: window.__avatarLab?.diagnostics?.controller?.lipSync,
       frame: window.__avatarLab?.diagnostics?.controller?.renderer?.currentFrame,
+      speech: window.__avatarLab?.speech?.speaking,
+      event: window.__avatarLab?.diagnostics?.speech?.engine?.lastEventType,
     }));
+    samples.push(sample);
     if (sample.lip > 0) lipValues.add(Number(sample.lip.toFixed(2)));
     if (sample.frame) mouthFrames.add(sample.frame);
     await page.waitForTimeout(45);
   }
+  results.samples = samples;
+  results.traceDuringSpeaking = await page.evaluate(() => window.__speechMock.trace);
   if (lipValues.size < 3) throw new Error(`expected at least 3 positive lip values: ${[...lipValues].join(',')}`);
   for (const frame of ['mouth-a', 'mouth-e', 'mouth-u']) {
     if (!mouthFrames.has(frame)) throw new Error(`speech animation did not show ${frame}: ${[...mouthFrames].join(',')}`);
   }
   results.lipValues = [...lipValues];
   results.mouthFrames = [...mouthFrames];
+  results.speaking = await screenshot(page, '01-speaking.png');
 
   await page.waitForFunction(() => window.__avatarLab?.speech?.speaking === false, undefined, { timeout: 10_000 });
   await page.waitForFunction(() => window.__avatarLab?.diagnostics?.controller?.state === 'idle', undefined, { timeout: 10_000 });
