@@ -36,14 +36,22 @@ class V48BuildTests(unittest.TestCase):
     def test_motion_limits_encoded(self):
         out = MOD.build(SOURCE)
         animate = MOD.extract(out, 'function animate(t,dt)', 'function resize()')
-        for value in ['*.011', '*.0045', '*.006', '*.028', '*.13']:
+        for value in ['*.014', '*.0045', '*.006', '*.028', '*.13']:
             self.assertIn(value, animate)
 
-    def test_first_blink_and_interval_range(self):
+    def test_hips_preserve_rest_translation(self):
+        out = MOD.build(SOURCE)
+        self.assertIn("baseHipsY=hips?.position.y??0", out)
+        self.assertIn('v48Motion.baseHipsY+breath*.0045', out)
+        self.assertIn('motion.hipOffset=', out)
+
+    def test_first_blink_interval_and_double_freeze(self):
         out = MOD.build(SOURCE)
         self.assertIn('nextBlink:1.85', out)
         self.assertIn('2.2+v48Rand(v48Motion.blinkIndex)*3.2', out)
         self.assertIn('v48Motion.blinkIndex%4===0', out)
+        self.assertIn('v48Motion.nextBlink=Infinity', out)
+        self.assertIn('if(v48Motion.isDouble)', out)
 
 
 if __name__ == '__main__':
