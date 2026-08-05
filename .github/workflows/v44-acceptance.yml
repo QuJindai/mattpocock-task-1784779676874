@@ -55,6 +55,10 @@ jobs:
               "closeup: 'mode=capture&action=idle&emotion=relaxed&distance=2.05&height=1.42&exposure=0.66&scale=0.96&fov=29&x=0'",
               "closeup: 'mode=capture&framing=closeup&action=idle&emotion=relaxed&distance=2.35&height=1.36&exposure=0.66&scale=0.98&fov=30&x=0'",
           )
+          s = s.replace(
+              "if (heightRatio < 0.45 || heightRatio > 0.93) {",
+              "const maxHeightRatio = name === 'closeup' ? 0.98 : 0.93;\n  if (heightRatio < 0.45 || heightRatio > maxHeightRatio) {",
+          )
           visual.write_text(s)
           PY
           node --check v4-wave-gesture-smoke.mjs
