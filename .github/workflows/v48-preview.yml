@@ -6,8 +6,10 @@ on:
     branches: [feature/v48-liveliness]
     paths:
       - v48-build.py
+      - v48-build-final.py
       - test_v48_build.py
-      - v48-motion-smoke.mjs
+      - test_v48_final_build.py
+      - v48-motion-deterministic.mjs
       - .github/workflows/v48-preview.yml
 
 jobs:
@@ -25,9 +27,11 @@ jobs:
         with:
           node-version: 22
       - name: Run source-lock tests
-        run: python test_v48_build.py -v
-      - name: Build V4.8 candidate
-        run: python v48-build.py
+        run: |
+          python test_v48_build.py -v
+          python test_v48_final_build.py -v
+      - name: Build final V4.8 candidate
+        run: python v48-build-final.py
       - name: Prepare browser modules
         run: |
           python - <<'PY'
@@ -44,7 +48,7 @@ jobs:
           PY
           node --check /tmp/v48-page.mjs
           node --check v48-visual-regression.mjs
-          node --check v48-motion-smoke.mjs
+          node --check v48-motion-deterministic.mjs
           grep -q 'visual-avatar-a-v4-8-20260805' v48-site/index.html
       - name: Install browser controller
         run: |
@@ -60,19 +64,19 @@ jobs:
         env:
           V47_PRODUCTION_URL: http://127.0.0.1:4173
         run: node v48-visual-regression.mjs
-      - name: Run V4.8 motion time-series gate
+      - name: Run deterministic V4.8 motion gate
         env:
           V48_URL: http://127.0.0.1:4173
-          V48_OUT: v48-liveliness-smoke
+          V48_OUT: v48-motion-deterministic
           CHROME_PATH: /usr/bin/google-chrome
-        run: node v48-motion-smoke.mjs
+        run: node v48-motion-deterministic.mjs
       - name: Upload V4.8 Preview evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: v48-liveliness-preview
           path: |
-            v48-liveliness-smoke
+            v48-motion-deterministic
             v48-visual-regression
             v48-site/index.html
             v48-site/metadata.json
