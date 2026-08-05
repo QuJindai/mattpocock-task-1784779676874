@@ -1,0 +1,41 @@
+name: LivePortrait Upload Probe
+
+on:
+  push:
+    branches: [avatar-showcase-lab]
+    paths:
+      - liveportrait-upload-probe.mjs
+      - package.json
+      - .github/workflows/liveportrait-upload-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pinned legacy client
+        run: npm install
+
+      - name: Upload source image only
+        run: node liveportrait-upload-probe.mjs
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: liveportrait-upload-probe
+          path: liveportrait-upload-probe/
+          if-no-files-found: error
+          retention-days: 7
