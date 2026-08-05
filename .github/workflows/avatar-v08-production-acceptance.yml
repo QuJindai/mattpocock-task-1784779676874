@@ -1,0 +1,54 @@
+name: Avatar v0.8 Production Acceptance
+
+on:
+  push:
+    branches: [avatar-showcase-v0.8]
+    paths:
+      - '.github/workflows/avatar-v08-production-acceptance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      AVATAR_URL: https://avatar-showcase-lab.vercel.app
+      AVATAR_ASSET_COMMIT: e389671e01dc3226d164e21a1d09e410efd587d4
+    steps:
+      - name: Checkout v0.8 branch
+        uses: actions/checkout@v4
+        with:
+          ref: avatar-showcase-v0.8
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+        working-directory: avatar-v07
+
+      - name: Run browser TTS Production acceptance
+        run: node scripts/speech-acceptance.mjs
+        working-directory: avatar-v07
+
+      - name: Run v0.7 Production visual regression
+        run: node scripts/cloud-acceptance.mjs
+        working-directory: avatar-v07
+
+      - name: Upload complete Production evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: avatar-v08-production-acceptance
+          path: |
+            avatar-v07/avatar-v08-speech-artifacts/
+            avatar-v07/avatar-v07-artifacts/
+          if-no-files-found: error
+          retention-days: 14
