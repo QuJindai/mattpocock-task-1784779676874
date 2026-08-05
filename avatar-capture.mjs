@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 
 const baseUrl = process.env.AVATAR_URL || 'https://avatar-showcase-lab.vercel.app';
+const accessUrl = process.env.AVATAR_ACCESS_URL || '';
 const outputDir = 'avatar-artifacts';
 const expectedRuntime = 'https://ezvfqrhzucjvkwnnbjux.supabase.co/functions/v1/avatar-motion-runtime';
 const expectedBackend = 'fffiloni/expression-editor';
@@ -22,6 +23,11 @@ async function setRange(id,value){await page.locator(`#${id}`).evaluate((el,v)=>
 const sha256=b=>createHash('sha256').update(b).digest('hex');
 
 try{
+  if(accessUrl){
+    await page.goto(accessUrl,{waitUntil:'domcontentloaded',timeout:120000});
+    await page.waitForTimeout(3000);
+    logs.push(`[access-bootstrap] ${page.url()}`);
+  }
   await page.goto(`${baseUrl}/studio`,{waitUntil:'domcontentloaded',timeout:120000});
   await page.waitForSelector('canvas.stage',{timeout:60000});
   await page.waitForSelector('#connect',{timeout:60000});
