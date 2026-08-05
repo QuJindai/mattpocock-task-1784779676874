@@ -1,0 +1,33 @@
+name: V3 Visual Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - v3-visual-smoke.mjs
+      - .github/workflows/v3-visual-smoke.yml
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Chromium
+        run: |
+          npm init -y
+          npm install playwright
+          npx playwright install --with-deps chromium
+      - name: Validate V3 production
+        run: node v3-visual-smoke.mjs
+      - name: Upload V3 screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vrm-v3-visual-smoke
+          path: v3-visual-smoke
+          retention-days: 14
