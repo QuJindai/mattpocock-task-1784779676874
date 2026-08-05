@@ -1,0 +1,33 @@
+name: V4 Wave Gesture Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - v4-wave-gesture-smoke.mjs
+      - .github/workflows/v4-wave-gesture-smoke.yml
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Chromium
+        run: |
+          npm init -y
+          npm install playwright
+          npx playwright install --with-deps chromium
+      - name: Validate natural wave gesture
+        run: node v4-wave-gesture-smoke.mjs
+      - name: Upload wave gesture evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vrm-v4-wave-gesture-smoke
+          path: v4-wave-gesture-smoke
+          retention-days: 14
