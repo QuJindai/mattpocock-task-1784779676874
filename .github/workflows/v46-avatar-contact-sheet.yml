@@ -1,0 +1,29 @@
+name: V4.6 Avatar Contact Sheet
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - v46-avatar-contact-sheet.mjs
+      - .github/workflows/v46-avatar-contact-sheet.yml
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install image tooling
+        run: npm install sharp
+      - name: Build 300-avatar contact sheets
+        run: node v46-avatar-contact-sheet.mjs
+      - name: Upload contact sheets
+        uses: actions/upload-artifact@v4
+        with:
+          name: v46-avatar-contact-sheet
+          path: v46-avatar-contact-sheet
+          retention-days: 14
