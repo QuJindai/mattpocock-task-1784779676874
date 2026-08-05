@@ -1,0 +1,120 @@
+name: V4.6 Export Neurohacker VRMs
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - v46-export-neurohacker.mjs
+      - .github/workflows/v46-export-neurohacker.yml
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout controller repository
+        uses: actions/checkout@v4
+      - name: Checkout CharacterStudio
+        uses: actions/checkout@v4
+        with:
+          repository: M3-org/CharacterStudio
+          ref: main
+          path: studio
+      - name: Checkout composable character assets
+        uses: actions/checkout@v4
+        with:
+          repository: memelotsqui/character-assets
+          ref: main
+          path: studio/public/character-assets
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: studio/package-lock.json
+      - name: Prepare deterministic Studio
+        run: |
+          python - <<'PY'
+          import json
+          import shutil
+          from pathlib import Path
+
+          assets = Path('studio/public/character-assets')
+          manifest = json.loads((assets / 'neurohacker/manifest.json').read_text())
+          groups = {item['trait']: {entry['id'] for entry in item['collection']} for item in manifest['traits']}
+          required = {
+              'body': {'0'},
+              'eyes': {'regulareyes'},
+              'head': {'short', 'hairshort'},
+              'chest': {'simpleshirt', 'sweater'},
+              'outer': {'longjacket'},
+              'legs': {'tightjeans', 'workingpants'},
+              'feet': {'simpleshoes', 'runningshoes'},
+          }
+          for group, ids in required.items():
+              assert group in groups, group
+              assert ids <= groups[group], (group, ids - groups[group])
+
+          for child in assets.iterdir():
+              if child.name == 'neurohacker':
+                  continue
+              if child.is_dir():
+                  shutil.rmtree(child)
+              else:
+                  child.unlink()
+
+          scene_context = Path('studio/src/context/SceneContext.jsx')
+          source = scene_context.read_text()
+          needle = '    setCharacterManager(characterManager);'
+          replacement = '''    setCharacterManager(characterManager);\n    window.__characterStudioManager = characterManager;\n    window.__characterStudioCamera = camera;\n    window.__characterStudioControls = controls;\n    window.__characterStudioBuild = "v46-neurohacker-export";'''
+          assert needle in source
+          scene_context.write_text(source.replace(needle, replacement, 1))
+          assert '__characterStudioManager' in scene_context.read_text()
+          PY
+      - name: Install Studio and automation dependencies
+        run: |
+          cd studio
+          npm ci
+          cd ..
+          npm install playwright wait-on
+          google-chrome --version || google-chrome-stable --version
+      - name: Run CharacterStudio tests
+        working-directory: studio
+        run: npm run test:run -- --passWithNoTests
+      - name: Start cloud Studio
+        run: |
+          cd studio
+          npm run dev -- --host 127.0.0.1 --port 4173 > ../v46-studio.log 2>&1 &
+          echo $! > ../v46-studio.pid
+          cd ..
+          npx wait-on http://127.0.0.1:4173 --timeout 120000
+      - name: Export three deterministic VRMs
+        env:
+          STUDIO_URL: http://127.0.0.1:4173
+          OUTPUT_DIR: v46-neurohacker-export
+        run: node v46-export-neurohacker.mjs
+      - name: Verify export evidence
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          results=json.loads(Path('v46-neurohacker-export/results.json').read_text())['results']
+          passed=[name for name, result in results.items() if result.get('ok')]
+          assert len(passed) >= 2, passed
+          for name in passed:
+              info=results[name]['file']
+              assert info['header'] == 'glTF'
+              assert info['size'] >= 500000
+              assert len(info['sha256']) == 64
+          print(json.dumps({'passed': passed, 'files': {name: results[name]['file'] for name in passed}}, indent=2))
+          PY
+          ls -lh v46-neurohacker-export/*.vrm
+      - name: Upload temporary generated models
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v46-neurohacker-generated-models
+          path: |
+            v46-neurohacker-export
+            v46-studio.log
+          retention-days: 14
