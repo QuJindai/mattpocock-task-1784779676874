@@ -1,0 +1,33 @@
+name: V4 Visual Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - v4-visual-smoke.mjs
+      - .github/workflows/v4-visual-smoke.yml
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Chromium
+        run: |
+          npm init -y
+          npm install playwright
+          npx playwright install --with-deps chromium
+      - name: Validate Alicia V4 production
+        run: node v4-visual-smoke.mjs
+      - name: Upload Alicia V4 screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vrm-v4-visual-smoke
+          path: v4-visual-smoke
+          retention-days: 14
