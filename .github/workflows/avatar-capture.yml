@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      AVATAR_URL: https://avatar-showcase-lab.vercel.app
+      AVATAR_URL: https://avatar-showcase-r9skdl6s2-qujindai.vercel.app
     steps:
       - name: Checkout
         uses: actions/checkout@v4
