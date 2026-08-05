@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      AVATAR_URL: https://avatar-showcase-lab-v06-stage-pcav7ze6r-qujindai.vercel.app
+      AVATAR_URL: https://avatar-showcase-lab.vercel.app
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,7 +35,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: avatar-showcase-v06-stage-acceptance
+          name: avatar-showcase-v06-production-acceptance
           path: avatar-artifacts/
           if-no-files-found: error
           retention-days: 14
