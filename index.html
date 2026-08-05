@@ -1,7 +1,9 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>VRM Showcase Lab V4</title><style>html,body{margin:0;height:100%;display:grid;place-items:center;background:#07090d;color:#fff;font:14px system-ui}.s{padding:20px 24px;border:1px solid #ffffff22;border-radius:16px;background:#0b0d12}.e{color:#ff9797;white-space:pre-wrap}</style></head><body><div class="s" id="s">正在加载 Alicia V4…</div><script>
 (async()=>{try{
- const encoded=await fetch('./v4-page.html.gz.b64?build=visual-alicia-v4-20260805',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('asset '+r.status);return r.text()});
- const bytes=Uint8Array.from(atob(encoded.trim()),c=>c.charCodeAt(0));
+ const names=['v4-page.part1.txt','v4-page.part2.txt','v4-page.part3.txt'];
+ const parts=await Promise.all(names.map(name=>fetch(`./${name}?build=visual-alicia-v4-20260805`,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(`${name} ${r.status}`);return r.text()})));
+ const encoded=parts.join('').trim();
+ const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));
  const text=await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
  if(!text.includes('visual-alicia-v4-20260805'))throw new Error('V4 build marker missing');
  document.open();document.write(text);document.close();
