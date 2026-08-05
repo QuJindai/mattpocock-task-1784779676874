@@ -7,7 +7,7 @@ on:
     paths:
       - v48-build.py
       - test_v48_build.py
-      - v48-liveliness-smoke.mjs
+      - v48-liveliness-smoke-fast.mjs
       - .github/workflows/v48-preview.yml
 
 jobs:
@@ -39,6 +39,7 @@ jobs:
           Path('/tmp/v48-module.mjs').write_text(match.group(1))
           PY
           node --check /tmp/v48-module.mjs
+          node --check v48-liveliness-smoke-fast.mjs
           grep -q 'visual-avatar-a-v4-8-20260805' v48-site/index.html
       - name: Install browser controller
         run: |
@@ -54,7 +55,7 @@ jobs:
         env:
           V48_URL: http://127.0.0.1:4173
           CHROME_PATH: /usr/bin/google-chrome
-        run: node v48-liveliness-smoke.mjs
+        run: node v48-liveliness-smoke-fast.mjs
       - name: Upload V4.8 Preview evidence
         if: always()
         uses: actions/upload-artifact@v4
