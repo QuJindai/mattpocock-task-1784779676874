@@ -50,7 +50,7 @@ function extractUrls(value) {
   return [...new Set(urls)];
 }
 
-async function submitAndWait(app, data, timeoutMs = 720_000) {
+async function submitAndWait(app, data, timeoutMs = 480_000) {
   const events = [];
   const job = app.submit(endpoint, data);
   let latestData = null;
@@ -66,6 +66,10 @@ async function submitAndWait(app, data, timeoutMs = 720_000) {
       reject(new Error(`LivePortrait timed out after ${timeoutMs} ms; events=${JSON.stringify(events)}`));
     }, timeoutMs);
 
+    async function persistEvents() {
+      await writeFile(`${outputDir}/events.json`, `${JSON.stringify(events, null, 2)}\n`, 'utf8');
+    }
+
     function finish(error, value) {
       clearInterval(keepAlive);
       clearTimeout(timeout);
@@ -78,12 +82,14 @@ async function submitAndWait(app, data, timeoutMs = 720_000) {
       latestData = dataEvent;
       events.push({ type: 'data', data: dataEvent });
       console.log('[data]', JSON.stringify(dataEvent));
+      void persistEvents();
       if (completed) finish(null, latestData);
     });
 
     job.on('status', (statusEvent) => {
       events.push({ type: 'status', status: statusEvent });
       console.log('[status]', JSON.stringify(statusEvent));
+      void persistEvents();
       if (statusEvent.stage === 'error') {
         finish(new Error(`LivePortrait status error: ${JSON.stringify(statusEvent)}`));
         return;
@@ -102,6 +108,13 @@ const sourceBytes = await sourceResponse.arrayBuffer();
 const sourceFile = new File([sourceBytes], 's9.jpg', {
   type: sourceResponse.headers.get('content-type') || 'image/jpeg',
 });
+const sourceFileData = {
+  blob: sourceFile,
+  path: sourceFile.name,
+  orig_name: sourceFile.name,
+  size: sourceFile.size,
+  mime_type: sourceFile.type,
+};
 console.log(`[source] type=${sourceFile.type} bytes=${sourceFile.size} name=${sourceFile.name}`);
 
 await writeFile(
@@ -112,10 +125,9 @@ await writeFile(
 
 const { app, source, attempt } = await connectWithRetry();
 console.log(`[connected] source=${source} attempt=${attempt} version=${app.config?.version}`);
-console.log(`[submit-signature] ${String(app.submit).slice(0, 2400)}`);
 
 const startedAt = Date.now();
-const { value: result, events } = await submitAndWait(app, [0.45, 0.22, sourceFile, true]);
+const { value: result, events } = await submitAndWait(app, [0.45, 0.22, sourceFileData, true]);
 const elapsedMs = Date.now() - startedAt;
 const urls = extractUrls(result);
 
