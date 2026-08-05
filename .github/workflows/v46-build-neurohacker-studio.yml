@@ -93,16 +93,18 @@ jobs:
       - name: Build production studio
         working-directory: studio
         run: npm run build
-      - name: Verify dist
+      - name: Verify production build
         working-directory: studio
         run: |
-          test -s dist/index.html
-          grep -R "V4.6 Modern Companion" dist >/dev/null
-          du -sh dist
-          find dist -maxdepth 2 -type f | sort | head -100
-      - name: Upload production dist
+          test -s build/index.html
+          test -s build/manifest.json
+          grep -R "V4.6 Modern Companion" build >/dev/null
+          test -s build/character-assets/neurohacker/manifest.json
+          du -sh build
+          find build -maxdepth 2 -type f | sort | head -100
+      - name: Upload production build
         uses: actions/upload-artifact@v4
         with:
-          name: v46-neurohacker-studio-dist
-          path: studio/dist
+          name: v46-neurohacker-studio-build
+          path: studio/build
           retention-days: 14
