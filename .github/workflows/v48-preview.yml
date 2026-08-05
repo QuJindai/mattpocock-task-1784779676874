@@ -28,7 +28,7 @@ jobs:
         run: python test_v48_build.py -v
       - name: Build V4.8 candidate
         run: python v48-build.py
-      - name: Verify browser modules
+      - name: Prepare browser modules
         run: |
           python - <<'PY'
           import re
@@ -40,10 +40,10 @@ jobs:
           visual=Path('v47-production-acceptance.mjs').read_text()
           visual=visual.replace('visual-avatar-a-v4-7-20260805','visual-avatar-a-v4-8-20260805')
           visual=visual.replace('v47-production-acceptance','v48-visual-regression')
-          Path('/tmp/v48-visual-regression.mjs').write_text(visual)
+          Path('v48-visual-regression.mjs').write_text(visual)
           PY
           node --check /tmp/v48-page.mjs
-          node --check /tmp/v48-visual-regression.mjs
+          node --check v48-visual-regression.mjs
           node --check v48-motion-smoke.mjs
           grep -q 'visual-avatar-a-v4-8-20260805' v48-site/index.html
       - name: Install browser controller
@@ -59,7 +59,7 @@ jobs:
       - name: Run V4.7 visual regression gates
         env:
           VRM_URL: http://127.0.0.1:4173
-        run: node /tmp/v48-visual-regression.mjs
+        run: node v48-visual-regression.mjs
       - name: Run V4.8 motion time-series gate
         env:
           V48_URL: http://127.0.0.1:4173
