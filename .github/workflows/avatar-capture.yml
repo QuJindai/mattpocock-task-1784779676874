@@ -13,7 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      AVATAR_URL: https://avatar-showcase-lab.vercel.app
+      AVATAR_URL: https://avatar-showcase-f5v9hnt7u-qujindai.vercel.app
+      AVATAR_ACCESS_URL: https://avatar-showcase-f5v9hnt7u-qujindai.vercel.app/?_vercel_share=vdYJeqM0JVsoQq4OouMffyGRKWNzyXCL
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,7 +36,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: avatar-showcase-cloud-acceptance
+          name: avatar-showcase-v06-acceptance
           path: avatar-artifacts/
           if-no-files-found: error
           retention-days: 14
