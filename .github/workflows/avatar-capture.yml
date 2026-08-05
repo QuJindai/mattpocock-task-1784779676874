@@ -14,6 +14,7 @@ jobs:
     timeout-minutes: 20
     env:
       AVATAR_URL: https://avatar-showcase-r9skdl6s2-qujindai.vercel.app
+      AVATAR_ACCESS_URL: https://avatar-showcase-r9skdl6s2-qujindai.vercel.app/?_vercel_share=jXE0avBpn2nezs4axdcdBE2feotEK1Wg
     steps:
       - name: Checkout
         uses: actions/checkout@v4
