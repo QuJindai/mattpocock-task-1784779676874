@@ -1,0 +1,8 @@
+{
+  "name": "liveportrait-zerogpu-probe",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@gradio/client": "1.10.0"
+  }
+}
