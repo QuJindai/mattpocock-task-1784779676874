@@ -68,22 +68,36 @@ jobs:
           JSON
           python - <<'PY'
           import json
+          import shutil
           from pathlib import Path
+
+          assets = Path('public/character-assets')
           catalog=json.loads(Path('public/manifest.json').read_text())
-          manifest=json.loads(Path('public/character-assets/neurohacker/manifest.json').read_text())
+          manifest=json.loads((assets/'neurohacker/manifest.json').read_text())
           assert len(catalog['characters']) == 1
           groups={item['trait']: {entry['id'] for entry in item['collection']} for item in manifest['traits']}
           required={
               'head': {'short','hairshort'},
               'chest': {'sweater','simpleshirt'},
+              'legs': {'tightjeans','workingpants'},
               'body': {'0'},
               'eyes': {'regulareyes'},
           }
           for group, ids in required.items():
               assert group in groups, group
               assert ids & groups[group], (group, ids, groups[group])
+
+          for child in assets.iterdir():
+              if child.name == 'neurohacker':
+                  continue
+              if child.is_dir():
+                  shutil.rmtree(child)
+              else:
+                  child.unlink()
+
           print(json.dumps({'groups': sorted(groups), 'targetTraits': required}, default=list, indent=2))
           PY
+          du -sh public/character-assets/neurohacker
       - name: Install dependencies
         working-directory: studio
         run: npm ci
@@ -100,6 +114,8 @@ jobs:
           test -s build/manifest.json
           grep -R "V4.6 Modern Companion" build >/dev/null
           test -s build/character-assets/neurohacker/manifest.json
+          test ! -e build/character-assets/drophunter
+          test ! -e build/character-assets/_utilities
           du -sh build
           find build -maxdepth 2 -type f | sort | head -100
       - name: Upload production build
