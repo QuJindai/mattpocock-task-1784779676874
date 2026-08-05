@@ -10,21 +10,31 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 9
+    timeout-minutes: 7
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install Chromium
+      - name: Install Playwright controller
         run: |
           npm init -y
           npm install playwright
-          npx playwright install --with-deps chromium
+          google-chrome --version || google-chrome-stable --version
       - name: Prepare V4.4 assertions
         run: |
           python - <<'PY'
           from pathlib import Path
+
+          paths = [
+              Path('v4-wave-gesture-smoke.mjs'),
+              Path('v4-closeup-smoke.mjs'),
+              Path('v4-visual-smoke.mjs'),
+          ]
+          for path in paths:
+              s = path.read_text()
+              s = s.replace("chromium.launch({", "chromium.launch({ channel: 'chrome',")
+              path.write_text(s)
 
           wave = Path('v4-wave-gesture-smoke.mjs')
           s = wave.read_text()
