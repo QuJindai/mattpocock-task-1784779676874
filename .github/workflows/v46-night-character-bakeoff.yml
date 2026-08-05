@@ -1,0 +1,69 @@
+name: V4.6 Night Character Bake-off
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - v46-night-character-bakeoff.mjs
+      - .github/workflows/v46-night-character-bakeoff.yml
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download generated VRM artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: v46-neurohacker-generated-models
+          path: generated
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: QuJindai/mattpocock-task-1784779676874
+          run-id: 31020717434
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Reconstruct immutable V4.5 test site
+        run: |
+          mkdir -p site/models
+          cat payloads/v45/payload-1.txt payloads/v45/payload-2.txt payloads/v45/payload-3.txt payloads/v45/payload-4.txt \
+            | tr -d '\r\n ' > /tmp/v45.b64
+          test "$(wc -c < /tmp/v45.b64)" -eq 9504
+          printf '%s' "$(cat /tmp/v45.b64)" | base64 -d | gzip -d > site/index.html
+          grep -q 'visual-alicia-v4-5-20260805' site/index.html
+          cp generated/v46-neurohacker-export/v46-layered.vrm site/models/
+          cp generated/v46-neurohacker-export/v46-sweater.vrm site/models/
+          cp generated/v46-neurohacker-export/v46-casual.vrm site/models/
+          test -s site/models/v46-layered.vrm
+          test -s site/models/v46-sweater.vrm
+          test -s site/models/v46-casual.vrm
+      - name: Install browser controller
+        run: |
+          npm install playwright wait-on
+          google-chrome --version || google-chrome-stable --version
+      - name: Start local V4.5 scene
+        run: |
+          cd site
+          python3 -m http.server 4173 --bind 127.0.0.1 > ../v46-night-server.log 2>&1 &
+          echo $! > ../v46-night-server.pid
+          cd ..
+          npx wait-on http://127.0.0.1:4173 --timeout 120000
+      - name: Render five characters under identical conditions
+        env:
+          LOCAL_V45_URL: http://127.0.0.1:4173
+        run: node v46-night-character-bakeoff.mjs
+      - name: Upload visual comparison
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v46-night-character-bakeoff
+          path: |
+            v46-night-character-bakeoff
+            v46-night-server.log
+          retention-days: 14
