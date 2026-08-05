@@ -3,7 +3,7 @@ import { mkdir, writeFile, stat } from 'node:fs/promises';
 
 const baseUrl = process.env.VRM_URL || 'https://vrm-showcase-lab.vercel.app';
 const outputDir = 'v4-wave-gesture-smoke';
-const expectedBuild = 'visual-alicia-v4-2-20260805';
+const expectedBuild = 'visual-alicia-v4-3-20260805';
 await mkdir(outputDir, { recursive: true });
 
 const browser = await chromium.launch({
