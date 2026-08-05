@@ -9,6 +9,9 @@ await mkdir(outputDir, { recursive: true });
 const models = {
   avatarA: 'https://cdn.jsdelivr.net/gh/madjin/vrm-samples@master/vroid/stable/AvatarSample_A.vrm',
   avatarB: 'https://cdn.jsdelivr.net/gh/madjin/vrm-samples@master/vroid/stable/AvatarSample_B.vrm',
+  shino: 'https://file-in-abyss.soga-web.studio/download/vrm/06-sendagaya-shino.vrm',
+  vita: 'https://file-in-abyss.soga-web.studio/download/vrm/03-vita.vrm',
+  victoria: 'https://file-in-abyss.soga-web.studio/download/vrm/04-victoria-rubin.vrm',
   invalid: 'https://example.invalid/not-found.vrm',
 };
 
@@ -165,6 +168,10 @@ const common = 'mode=capture&url=' + encodeURIComponent(models.avatarA);
 await capture({ name:'01-showcase-idle', query:`${common}&action=idle&emotion=relaxed&distance=2.18&height=1.34&exposure=0.82&scale=1.08&fov=30&x=0.02` });
 await capture({ name:'02-showcase-wave', query:`${common}&action=wave&emotion=happy&distance=2.18&height=1.34&exposure=0.82&scale=1.08&fov=30&x=0.02` });
 await capture({ name:'03-showcase-closeup', query:`${common}&action=idle&emotion=relaxed&distance=1.72&height=1.43&exposure=0.80&scale=1.08&fov=29&x=0.02` });
+const bakeoffPreset='mode=capture&action=idle&emotion=relaxed&distance=2.05&height=1.36&exposure=0.76&scale=1.08&fov=29&x=0.02';
+await capture({ name:'06-model-shino', query:`${bakeoffPreset}&url=${encodeURIComponent(models.shino)}` });
+await capture({ name:'07-model-vita', query:`${bakeoffPreset}&url=${encodeURIComponent(models.vita)}` });
+await capture({ name:'08-model-victoria', query:`${bakeoffPreset}&url=${encodeURIComponent(models.victoria)}` });
 await capture({
   name:'04-studio-restore',
   query:`mode=studio&url=${encodeURIComponent(models.avatarB)}&action=listen&emotion=happy&distance=2.25&height=1.40&exposure=0.76&scale=1.05&fov=31&x=-0.08`,
