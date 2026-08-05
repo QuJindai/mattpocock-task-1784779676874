@@ -1,0 +1,41 @@
+name: Avatar Showcase Cloud Acceptance
+
+on:
+  push:
+    branches: [avatar-showcase-lab]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      AVATAR_URL: https://avatar-showcase-lab.vercel.app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+
+      - name: Run avatar cloud acceptance
+        run: node avatar-capture.mjs
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: avatar-showcase-cloud-acceptance
+          path: avatar-artifacts/
+          if-no-files-found: error
+          retention-days: 14
