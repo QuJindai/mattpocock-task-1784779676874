@@ -1,8 +1,12 @@
 {
-  "name": "vrm-showcase-cloud-capture",
+  "name": "avatar-showcase-cloud-validation",
   "private": true,
   "type": "module",
   "scripts": {
-    "capture": "node capture.mjs"
+    "capture": "node avatar-capture.mjs",
+    "probe:gradio": "node gradio-probe.mjs"
+  },
+  "dependencies": {
+    "@gradio/client": "0.11.0"
   }
 }
