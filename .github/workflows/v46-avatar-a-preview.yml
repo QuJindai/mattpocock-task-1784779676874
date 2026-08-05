@@ -1,0 +1,74 @@
+name: V4.6 Avatar A Preview
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - v46-avatar-a-preview-smoke.mjs
+      - .github/workflows/v46-avatar-a-preview.yml
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build Avatar A V4.6 candidate
+        run: |
+          mkdir -p v46-preview-site
+          cat payloads/v45/payload-1.txt payloads/v45/payload-2.txt payloads/v45/payload-3.txt payloads/v45/payload-4.txt \
+            | tr -d '\r\n ' > /tmp/v45.b64
+          test "$(wc -c < /tmp/v45.b64)" -eq 9504
+          printf '%s' "$(cat /tmp/v45.b64)" | base64 -d | gzip -d > v46-preview-site/index.html
+          python - <<'PY'
+          from pathlib import Path
+          page=Path('v46-preview-site/index.html')
+          source=page.read_text()
+          source=source.replace('VRM Showcase Lab V4.5','VRM Showcase Lab V4.6')
+          source=source.replace('Alicia / Night Apartment','Avatar A / Night Apartment')
+          source=source.replace("visual-alicia-v4-5-20260805","visual-avatar-a-v4-6-20260805")
+          source=source.replace(
+              'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r110/examples/models/vrm/Alicia/AliciaSolid.vrm',
+              'https://cdn.jsdelivr.net/gh/madjin/vrm-samples@master/vroid/stable/AvatarSample_A.vrm',
+          )
+          old="function tune(root){root.traverse(o=>{if(!o.isMesh)return;o.castShadow=true;o.frustumCulled=false;for(const m of(Array.isArray(o.material)?o.material:[o.material]))if(m){if('emissiveIntensity'in m)m.emissiveIntensity=Math.min(m.emissiveIntensity||0,.28);m.toneMapped=true;m.needsUpdate=true}})}"
+          new="function tune(root){root.traverse(o=>{if(!o.isMesh)return;o.castShadow=true;o.frustumCulled=false;for(const m of(Array.isArray(o.material)?o.material:[o.material]))if(m){const n=m.name||'',outline=n.includes('(Outline)');if('emissiveIntensity'in m){if(!outline&&n.includes('_SKIN'))m.emissiveIntensity=.08;else if(!outline&&n.includes('Tops_01_CLOTH'))m.emissiveIntensity=.10;else if(!outline&&n.includes('_HAIR_'))m.emissiveIntensity=.12;else if(n.includes('_EYE')||n.includes('FaceEye'))m.emissiveIntensity=.18;else m.emissiveIntensity=Math.min(m.emissiveIntensity||0,.14)}if(!outline&&m.color){if(n.includes('Tops_01_CLOTH'))m.color.set('#f4e9dc');else if(n.includes('_HAIR_'))m.color.set('#ad8c83');else if(n.includes('_SKIN'))m.color.set('#fff3ee')}m.toneMapped=true;m.needsUpdate=true}})}"
+          assert old in source
+          source=source.replace(old,new,1)
+          page.write_text(source)
+          final=page.read_text()
+          assert 'visual-avatar-a-v4-6-20260805' in final
+          assert 'AvatarSample_A.vrm' in final
+          assert "m.color.set('#f4e9dc')" in final
+          assert "m.color.set('#ad8c83')" in final
+          assert 'AliciaSolid.vrm' not in final
+          PY
+          grep -q 'visual-avatar-a-v4-6-20260805' v46-preview-site/index.html
+      - name: Install browser controller
+        run: |
+          npm install playwright wait-on
+          google-chrome --version || google-chrome-stable --version
+      - name: Start V4.6 candidate server
+        run: |
+          cd v46-preview-site
+          python3 -m http.server 4173 --bind 127.0.0.1 > ../v46-preview-server.log 2>&1 &
+          cd ..
+          npx wait-on http://127.0.0.1:4173 --timeout 120000
+      - name: Run Avatar A V4.6 smoke
+        env:
+          PREVIEW_URL: http://127.0.0.1:4173
+        run: node v46-avatar-a-preview-smoke.mjs
+      - name: Upload V4.6 candidate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v46-avatar-a-preview
+          path: |
+            v46-avatar-a-preview-smoke
+            v46-preview-site/index.html
+            v46-preview-server.log
+          retention-days: 14
