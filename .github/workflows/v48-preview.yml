@@ -58,7 +58,7 @@ jobs:
           npx wait-on http://127.0.0.1:4173 --timeout 120000
       - name: Run V4.7 visual regression gates
         env:
-          VRM_URL: http://127.0.0.1:4173
+          V47_PRODUCTION_URL: http://127.0.0.1:4173
         run: node v48-visual-regression.mjs
       - name: Run V4.8 motion time-series gate
         env:
