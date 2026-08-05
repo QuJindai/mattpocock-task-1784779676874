@@ -6,12 +6,13 @@ on:
     branches: [main]
     paths:
       - v45-night-smoke.mjs
+      - payloads/v45/**
       - .github/workflows/v45-acceptance.yml
 
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 7
+    timeout-minutes: 9
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -66,10 +67,20 @@ jobs:
         run: |
           set +e
           status=0
-          node v45-night-smoke.mjs || status=1
-          node v4-closeup-smoke.mjs || status=1
-          node v4-wave-gesture-smoke.mjs || status=1
-          node v4-visual-smoke.mjs || status=1
+
+          timeout 150s node v45-night-smoke.mjs || status=1
+
+          timeout 180s node v4-closeup-smoke.mjs > closeup.log 2>&1 & closeup_pid=$!
+          timeout 180s node v4-wave-gesture-smoke.mjs > wave.log 2>&1 & wave_pid=$!
+          timeout 240s node v4-visual-smoke.mjs > visual.log 2>&1 & visual_pid=$!
+
+          wait $closeup_pid || status=1
+          wait $wave_pid || status=1
+          wait $visual_pid || status=1
+
+          cat closeup.log || true
+          cat wave.log || true
+          cat visual.log || true
           exit $status
       - name: Upload V4.5 evidence
         if: always()
@@ -81,4 +92,7 @@ jobs:
             v4-closeup-smoke
             v4-wave-gesture-smoke
             v4-visual-smoke
+            closeup.log
+            wave.log
+            visual.log
           retention-days: 14
