@@ -29,7 +29,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Reconstruct immutable V4.5 test site
+      - name: Reconstruct orientation-aware V4.5 test site
         run: |
           mkdir -p site/models
           cat payloads/v45/payload-1.txt payloads/v45/payload-2.txt payloads/v45/payload-3.txt payloads/v45/payload-4.txt \
@@ -37,6 +37,16 @@ jobs:
           test "$(wc -c < /tmp/v45.b64)" -eq 9504
           printf '%s' "$(cat /tmp/v45.b64)" | base64 -d | gzip -d > site/index.html
           grep -q 'visual-alicia-v4-5-20260805' site/index.html
+          python - <<'PY'
+          from pathlib import Path
+          page=Path('site/index.html')
+          source=page.read_text()
+          old='VRMUtils.rotateVRM0(vrm);VRMUtils.removeUnnecessaryVertices(gltf.scene);'
+          new="if(!url.includes('/models/v46-'))VRMUtils.rotateVRM0(vrm);VRMUtils.removeUnnecessaryVertices(gltf.scene);"
+          assert old in source
+          page.write_text(source.replace(old,new,1))
+          assert "!url.includes('/models/v46-')" in page.read_text()
+          PY
           cp generated/v46-neurohacker-export/v46-layered.vrm site/models/
           cp generated/v46-neurohacker-export/v46-sweater.vrm site/models/
           cp generated/v46-neurohacker-export/v46-casual.vrm site/models/
