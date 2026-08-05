@@ -1,0 +1,38 @@
+name: Avatar v0.7 Unit Contracts
+
+on:
+  push:
+    branches: [avatar-showcase-v0.7]
+    paths:
+      - 'avatar-v07/**'
+      - '.github/workflows/avatar-v07-unit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout isolated branch
+        uses: actions/checkout@v4
+        with:
+          ref: avatar-showcase-v0.7
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run contract tests
+        run: node --test tests/*.test.mjs
+        working-directory: avatar-v07
+
+      - name: Check module syntax
+        run: |
+          for file in src/*.js scripts/*.mjs tests/*.mjs; do
+            node --check "$file"
+          done
+        working-directory: avatar-v07
