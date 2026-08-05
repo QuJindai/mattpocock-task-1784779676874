@@ -37,6 +37,31 @@ test('speech start enters talk and end restores previous state', () => {
   assert.deepEqual(controller.diagnostics, { state: 'listen', expression: 'focused', lipSync: 0 });
 });
 
+test('rapid boundary cues are queued and shown in order', () => {
+  const controller = fakeController();
+  const clock = fakeClock();
+  const bridge = new SpeechAvatarBridge(controller, { now: clock.now, cueHoldMs: 260 });
+  bridge.handleStart();
+
+  clock.advance(120);
+  bridge.handleBoundary({ char: '啊', charIndex: 0 });
+  assert.equal(controller.diagnostics.lipSync, 0.88);
+
+  clock.advance(80);
+  bridge.handleBoundary({ char: '你', charIndex: 1 });
+  clock.advance(80);
+  bridge.handleBoundary({ char: '好', charIndex: 2 });
+  assert.equal(bridge.diagnostics.queuedCues, 2);
+
+  clock.advance(100);
+  bridge.update();
+  assert.equal(controller.diagnostics.lipSync, 0.52);
+  clock.advance(260);
+  bridge.update();
+  assert.equal(controller.diagnostics.lipSync, 0.24);
+  assert.equal(bridge.diagnostics.queuedCues, 0);
+});
+
 test('fallback mouth animation activates after a boundary gap', () => {
   const controller = fakeController();
   const clock = fakeClock();
@@ -51,14 +76,17 @@ test('fallback mouth animation activates after a boundary gap', () => {
   assert.notEqual(controller.diagnostics.lipSync, before);
 });
 
-test('cancel and error both reset mouth and restore state', () => {
+test('cancel and error both reset mouth, cue queue, and state', () => {
   for (const method of ['handleCancel', 'handleError']) {
     const controller = fakeController();
-    const bridge = new SpeechAvatarBridge(controller, { now: () => 1000 });
+    const clock = fakeClock();
+    const bridge = new SpeechAvatarBridge(controller, { now: clock.now });
     bridge.handleStart();
     bridge.handleBoundary({ char: '啊', charIndex: 0 });
+    bridge.handleBoundary({ char: '你', charIndex: 1 });
     bridge[method]();
     assert.deepEqual(controller.diagnostics, { state: 'listen', expression: 'focused', lipSync: 0 });
+    assert.equal(bridge.diagnostics.queuedCues, 0);
   }
 });
 
