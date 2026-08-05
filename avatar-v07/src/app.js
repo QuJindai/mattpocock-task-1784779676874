@@ -32,8 +32,9 @@ function setStatus(text, level = 'info') {
 }
 
 function syncQuery() {
-  const next = serializeUrlState(state);
-  history.replaceState(null, '', `${location.pathname}?${next}`);
+  const nextUrl = new URL(location.href);
+  nextUrl.search = serializeUrlState(state);
+  history.replaceState(null, '', nextUrl);
 }
 
 function applyPresentation() {
