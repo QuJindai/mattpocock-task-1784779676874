@@ -1,0 +1,33 @@
+name: V4.6 Character Bake-off
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - v46-character-bakeoff.mjs
+      - .github/workflows/v46-character-bakeoff.yml
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright controller
+        run: |
+          npm init -y
+          npm install playwright
+          google-chrome --version || google-chrome-stable --version
+      - name: Render six candidate VRMs
+        run: node v46-character-bakeoff.mjs
+      - name: Upload candidate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v46-character-bakeoff
+          path: v46-character-bakeoff
+          retention-days: 14
