@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0b0d13">
-  <title>Avatar Showcase Lab v0.7</title>
+  <title>Avatar Showcase Lab v0.8</title>
   <link rel="stylesheet" href="./styles.css">
   <script type="importmap">
     {"imports":{"pixi.js":"https://cdn.jsdelivr.net/npm/pixi.js@8.19.0/dist/pixi.min.mjs"}}
@@ -22,13 +22,13 @@
 
     <header class="showcase-brand">
       <strong>Avatar Showcase</strong>
-      <span id="route-label">FRAME BLEND · v0.7</span>
+      <span id="route-label">FRAME BLEND · v0.8</span>
     </header>
     <div class="showcase-status" id="showcase-status">正在载入关键帧…</div>
 
     <aside class="studio-panel">
       <div class="panel-head">
-        <div><b>AvatarRenderer</b><small>frame-blend · C-compatible boundary</small></div>
+        <div><b>AvatarRenderer</b><small>frame-blend · browser speech</small></div>
         <a href="/showcase">打开展示页</a>
       </div>
       <label>动作状态</label>
@@ -46,6 +46,27 @@
         <button data-expression="focused">focused</button>
       </div>
       <label class="toggle"><input id="autoplay" type="checkbox"> 自动演示</label>
+
+      <section class="speech-panel" aria-labelledby="speech-title">
+        <div class="speech-head">
+          <b id="speech-title">浏览器语音</b>
+          <span id="speech-support">正在检测系统音色…</span>
+        </div>
+        <label for="speech-text">朗读文本</label>
+        <textarea id="speech-text" rows="4">你好，很高兴见到你。今天想聊些什么？</textarea>
+        <label for="speech-voice">音色</label>
+        <select id="speech-voice"><option value="">浏览器默认</option></select>
+        <div class="speech-range-list">
+          <label>语速 <output id="out-speech-rate"></output><input id="speech-rate" type="range" min="0.6" max="1.6" step="0.05"></label>
+          <label>音调 <output id="out-speech-pitch"></output><input id="speech-pitch" type="range" min="0.7" max="1.4" step="0.05"></label>
+          <label>音量 <output id="out-speech-volume"></output><input id="speech-volume" type="range" min="0" max="1" step="0.05"></label>
+        </div>
+        <div class="speech-actions">
+          <button id="speech-play" type="button">朗读</button>
+          <button id="speech-stop" type="button">停止</button>
+        </div>
+      </section>
+
       <div class="range-list">
         <label>角色比例 <output id="out-scale"></output><input id="scale" type="range" min="0.7" max="1.5" step="0.01"></label>
         <label>水平位置 <output id="out-x"></output><input id="x" type="range" min="-320" max="320" step="1"></label>
@@ -65,7 +86,7 @@
 
     <section class="compare-card">
       <b>目标方向</b>
-      <span>高精度角色原画 · 暖色公寓 · 冷色夜景 · 关键帧平滑混合</span>
+      <span>高精度角色原画 · 暖色公寓 · 浏览器语音 · 关键帧平滑混合</span>
     </section>
   </main>
   <script type="module" src="./src/app.js"></script>
