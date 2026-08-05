@@ -7,6 +7,8 @@ import { parseUrlState, serializeUrlState } from './url-state.js';
 
 const ROUTES = new Set(['studio', 'showcase', 'capture', 'compare']);
 const RUNTIME_URL = 'https://ezvfqrhzucjvkwnnbjux.supabase.co/functions/v1/avatar-motion-runtime';
+const APP_BASE_URL = new URL('../', import.meta.url);
+const FRAME_BASE_URL = new URL('public/frames/formal-v1/', APP_BASE_URL);
 const routeToken = location.pathname.split('/').filter(Boolean)[0] || 'showcase';
 const mode = ROUTES.has(routeToken) ? routeToken : 'showcase';
 const query = new URLSearchParams(location.search);
@@ -49,16 +51,15 @@ function setBackgroundParallax(normalizedX = 0, normalizedY = 0) {
 }
 
 function frameAssetFromManifest(manifest) {
-  const base = new URL('/frames/formal-v1/', location.origin);
   const frames = {};
   for (const [id, entry] of Object.entries(manifest.frames || {})) {
-    frames[id] = new URL(entry.file.replace(/^\.\//, ''), base).href;
+    frames[id] = new URL(entry.file.replace(/^\.\//, ''), FRAME_BASE_URL).href;
   }
   return { id: manifest.characterId, frames };
 }
 
 function fallbackCharacter() {
-  const url = new URL('/frames/formal-v1/idle-open.webp', location.origin).href;
+  const url = new URL('idle-open.webp', FRAME_BASE_URL).href;
   return {
     id: 'formal-v1',
     frames: Object.fromEntries([
@@ -87,7 +88,7 @@ async function loadBackgroundAsset() {
 
 async function loadCharacterAsset() {
   try {
-    const response = await fetch('/frames/formal-v1/manifest.json', { cache: 'no-store' });
+    const response = await fetch(new URL('manifest.json', FRAME_BASE_URL), { cache: 'no-store' });
     if (!response.ok) throw new Error(`manifest ${response.status}`);
     const manifest = await response.json();
     const required = [
@@ -239,6 +240,8 @@ window.__avatarLab = {
   manifest: loaded.manifest,
   degraded,
   background,
+  assetBase: APP_BASE_URL.href,
+  frameBase: FRAME_BASE_URL.href,
   ready: false,
   get diagnostics() {
     return {
