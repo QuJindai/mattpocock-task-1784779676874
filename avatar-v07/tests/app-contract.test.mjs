@@ -31,6 +31,8 @@ test('app supports studio showcase capture and compare routes', async () => {
   assert.match(app, /history\.replaceState/);
   assert.match(app, /timeline\.interact/);
   assert.match(app, /asset=background/);
+  assert.match(app, /import\.meta\.url/);
+  assert.match(app, /public\/frames\/formal-v1/);
 });
 
 test('showcase and capture hide studio controls through mode classes', async () => {
