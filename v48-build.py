@@ -36,19 +36,21 @@ def extract(source: str, start: str, end: str) -> str:
     return source[a:b]
 
 
-V48_RUNTIME = r'''const v48Report={ready:true,version:'liveliness-v1',motion:{frameCount:0,breath:0,shoulder:0,gazeX:0,gazeY:0,headYaw:0},blink:{value:0,count:0,next:1.85,lastInterval:null,doubleCount:0,history:[]},spring:{available:false,drivenByHead:true}};
-const v48Motion={gazeX:0,gazeY:0,blinkStart:-1,blinkDuration:.17,blinkIndex:0,nextBlink:1.85,doubleAt:-1,lastBlinkAt:null};
+V48_RUNTIME = r'''const v48Report={ready:true,version:'liveliness-v1',motion:{frameCount:0,breath:0,shoulder:0,gazeX:0,gazeY:0,headYaw:0,hipOffset:0},blink:{value:0,count:0,next:1.85,lastInterval:null,doubleCount:0,history:[]},spring:{available:false,drivenByHead:true}};
+const v48Motion={gazeX:0,gazeY:0,blinkStart:-1,blinkDuration:.20,blinkIndex:0,nextBlink:1.85,doubleAt:-1,isDouble:false,baseHipsY:0};
 function v48Rand(i){const x=Math.sin((i+1)*12.9898+78.233)*43758.5453;return x-Math.floor(x)}
-function v48Reset(t){v48Motion.gazeX=0;v48Motion.gazeY=0;v48Motion.blinkStart=-1;v48Motion.blinkIndex=0;v48Motion.nextBlink=t+1.85;v48Motion.doubleAt=-1;v48Report.blink.value=0;v48Report.blink.count=0;v48Report.blink.next=v48Motion.nextBlink;v48Report.blink.lastInterval=null;v48Report.blink.doubleCount=0;v48Report.blink.history.length=0;blink=0}
+function v48Reset(t){const hips=vrm?.humanoid?.getNormalizedBoneNode('hips');v48Motion.baseHipsY=hips?.position.y??0;v48Motion.gazeX=0;v48Motion.gazeY=0;v48Motion.blinkStart=-1;v48Motion.blinkIndex=0;v48Motion.nextBlink=t+1.85;v48Motion.doubleAt=-1;v48Motion.isDouble=false;v48Report.motion.frameCount=0;v48Report.motion.hipOffset=0;v48Report.blink.value=0;v48Report.blink.count=0;v48Report.blink.next=v48Motion.nextBlink;v48Report.blink.lastInterval=null;v48Report.blink.doubleCount=0;v48Report.blink.history.length=0;blink=0}
 function v48ScheduleBlink(t){const interval=2.2+v48Rand(v48Motion.blinkIndex)*3.2;v48Motion.nextBlink=t+interval;v48Report.blink.next=v48Motion.nextBlink;v48Report.blink.lastInterval=interval;v48Report.blink.history.push(interval);if(v48Report.blink.history.length>8)v48Report.blink.history.shift()}
 function v48BlinkTarget(t){
-  if(v48Motion.doubleAt>0&&t>=v48Motion.doubleAt&&v48Motion.blinkStart<0){v48Motion.blinkStart=t;v48Motion.doubleAt=-1}
-  if(v48Motion.blinkStart<0&&t>=v48Motion.nextBlink){v48Motion.blinkStart=t}
+  if(v48Motion.doubleAt>0&&t>=v48Motion.doubleAt&&v48Motion.blinkStart<0){v48Motion.blinkStart=t;v48Motion.doubleAt=-1;v48Motion.isDouble=true;v48Motion.nextBlink=Infinity}
+  else if(v48Motion.blinkStart<0&&t>=v48Motion.nextBlink){v48Motion.blinkStart=t;v48Motion.isDouble=false}
   if(v48Motion.blinkStart<0)return 0;
   const phase=(t-v48Motion.blinkStart)/v48Motion.blinkDuration;
   if(phase<=1)return Math.sin(Math.PI*Math.max(0,phase));
   v48Motion.blinkStart=-1;v48Motion.blinkIndex++;v48Report.blink.count=v48Motion.blinkIndex;
-  if(v48Motion.blinkIndex%4===0){v48Motion.doubleAt=t+.13;v48Report.blink.doubleCount++}else v48ScheduleBlink(t);
+  if(v48Motion.isDouble){v48Motion.isDouble=false;v48ScheduleBlink(t)}
+  else if(v48Motion.blinkIndex%4===0){v48Motion.doubleAt=t+.15;v48Motion.nextBlink=Infinity;v48Report.blink.next=v48Motion.doubleAt;v48Report.blink.doubleCount++}
+  else v48ScheduleBlink(t);
   return 0
 }
 '''
@@ -60,8 +62,8 @@ V48_ANIMATE = r'''function animate(t,dt){
   const h=vrm.humanoid,spine=h.getNormalizedBoneNode('spine'),chest=h.getNormalizedBoneNode('chest'),neck=h.getNormalizedBoneNode('neck'),head=h.getNormalizedBoneNode('head'),hips=h.getNormalizedBoneNode('hips'),leftShoulder=h.getNormalizedBoneNode('leftShoulder'),rightShoulder=h.getNormalizedBoneNode('rightShoulder');
   const breath=Math.sin(t*1.04)*.76+Math.sin(t*.52+.9)*.24,slow=Math.sin(t*.37+.55),shoulder=breath*.006+Math.sin(t*.69+1.2)*.0025;
   if(spine){spine.rotation.z=THREE.MathUtils.damp(spine.rotation.z,slow*.008+breath*.0025,5,dt);spine.rotation.x=THREE.MathUtils.damp(spine.rotation.x,breath*.0035,5,dt)}
-  if(chest){chest.rotation.x=THREE.MathUtils.damp(chest.rotation.x,.006+breath*.011,5.5,dt);chest.rotation.z=THREE.MathUtils.damp(chest.rotation.z,Math.sin(t*.31)*.004,4.2,dt)}
-  if(hips)hips.position.y=THREE.MathUtils.damp(hips.position.y,breath*.0045,5.5,dt);
+  if(chest){chest.rotation.x=THREE.MathUtils.damp(chest.rotation.x,.006+breath*.014,5.5,dt);chest.rotation.z=THREE.MathUtils.damp(chest.rotation.z,Math.sin(t*.31)*.004,4.2,dt)}
+  const hipTarget=v48Motion.baseHipsY+breath*.0045;if(hips)hips.position.y=THREE.MathUtils.damp(hips.position.y,hipTarget,5.5,dt);
   if(leftShoulder){leftShoulder.rotation.z=THREE.MathUtils.damp(leftShoulder.rotation.z,.004+shoulder,5,dt);leftShoulder.rotation.x=THREE.MathUtils.damp(leftShoulder.rotation.x,breath*.0025,5,dt)}
   if(rightShoulder){rightShoulder.rotation.z=THREE.MathUtils.damp(rightShoulder.rotation.z,-.004-shoulder*.82,5,dt);rightShoulder.rotation.x=THREE.MathUtils.damp(rightShoulder.rotation.x,breath*.0021,5,dt)}
   const pointerActive=t-pointer.last<2.6,autoX=Math.sin(t*.23+.4)*.028+Math.sin(t*.61)*.009,autoY=Math.sin(t*.19+1.3)*.012;
@@ -72,7 +74,7 @@ V48_ANIMATE = r'''function animate(t,dt){
   if(state.action==='wave'){const hand=h.getNormalizedBoneNode('leftHand');if(hand)hand.rotation.z=Math.sin(t*6.3)*.31}
   const blinkTarget=v48BlinkTarget(t);blink=THREE.MathUtils.damp(blink,blinkTarget,30,dt);
   if(vrm.expressionManager){try{vrm.expressionManager.setValue('aa',state.action==='talk'?.15+.21*(.5+.5*Math.sin(t*7.4)):0)}catch{}try{vrm.expressionManager.setValue('blink',blink)}catch{}}
-  v48Report.motion.frameCount++;v48Report.motion.breath=breath;v48Report.motion.shoulder=shoulder;v48Report.motion.gazeX=v48Motion.gazeX;v48Report.motion.gazeY=v48Motion.gazeY;v48Report.motion.headYaw=head?.rotation.y??0;v48Report.blink.value=blink;v48Report.spring.available=Boolean(vrm.springBoneManager)
+  v48Report.motion.frameCount++;v48Report.motion.breath=breath;v48Report.motion.shoulder=shoulder;v48Report.motion.gazeX=v48Motion.gazeX;v48Report.motion.gazeY=v48Motion.gazeY;v48Report.motion.headYaw=head?.rotation.y??0;v48Report.motion.hipOffset=(hips?.position.y??v48Motion.baseHipsY)-v48Motion.baseHipsY;v48Report.blink.value=blink;v48Report.spring.available=Boolean(vrm.springBoneManager)
 }
 '''
 
