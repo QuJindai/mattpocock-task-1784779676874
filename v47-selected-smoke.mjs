@@ -2,101 +2,14 @@ import { chromium } from 'playwright';
 import { PNG } from 'pngjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-
-const base=process.env.V47_SELECTED_URL||'http://127.0.0.1:4173';
-const out='v47-selected-smoke';
-const buildId='visual-avatar-a-v4-7-20260805';
+const base=process.env.V47_SELECTED_URL||'http://127.0.0.1:4173',out='v47-selected-smoke',buildId='visual-avatar-a-v4-7-20260805';
 await mkdir(out,{recursive:true});
-const browser=await chromium.launch({
-  executablePath:process.env.CHROME_PATH||'/usr/bin/google-chrome',
-  headless:true,
-  args:['--no-sandbox','--disable-dev-shm-usage','--ignore-gpu-blocklist','--enable-webgl','--enable-unsafe-swiftshader','--use-angle=swiftshader-webgl'],
-});
+const browser=await chromium.launch({executablePath:process.env.CHROME_PATH||'/usr/bin/google-chrome',headless:true,args:['--no-sandbox','--disable-dev-shm-usage','--ignore-gpu-blocklist','--enable-webgl','--enable-unsafe-swiftshader','--use-angle=swiftshader-webgl']});
 const results={},errors=[],digest=b=>createHash('sha256').update(b).digest('hex');
-
-function sample(buffer,r){
-  const p=PNG.sync.read(buffer),x0=Math.floor(r.x*p.width),y0=Math.floor(r.y*p.height),x1=Math.ceil((r.x+r.w)*p.width),y1=Math.ceil((r.y+r.h)*p.height);
-  let R=0,G=0,B=0,n=0;
-  for(let y=y0;y<y1;y+=2)for(let x=x0;x<x1;x+=2){const i=(y*p.width+x)*4;R+=p.data[i];G+=p.data[i+1];B+=p.data[i+2];n++}
-  return{r:R/n,g:G/n,b:B/n,luma:(.2126*R+.7152*G+.0722*B)/n};
-}
-
-async function capture(name,query){
-  const page=await browser.newPage({viewport:{width:1600,height:900},deviceScaleFactor:1});
-  const pe=[],rf=[];
-  page.on('pageerror',e=>pe.push(e.stack||e.message));
-  page.on('requestfailed',r=>rf.push(`${r.url()} :: ${r.failure()?.errorText}`));
-  const t=Date.now();
-  try{
-    await page.goto(`${base}/?${query}`,{waitUntil:'domcontentloaded',timeout:90000});
-    await page.waitForFunction(()=>document.querySelector('#model-status')?.textContent==='角色已就绪',{timeout:30000});
-    const readyMs=Date.now()-t;
-    await page.waitForTimeout(3200);
-    const m=await page.evaluate(()=>{
-      const l=window.__vrmLab,v=l?.vrm,r=l?.renderer,c=l?.camera,g=r?.getContext?.(),cv=r?.domElement;
-      if(!v||!r||!c||!g||!cv)return null;
-      const w=cv.width,h=cv.height,p=new Uint8Array(w*h*4);g.readPixels(0,0,w,h,g.RGBA,g.UNSIGNED_BYTE,p);
-      let minX=w,maxX=-1,minY=h,maxY=-1,count=0,L=0;
-      for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4;if(p[i+3]<=24)continue;count++;minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);L+=.2126*p[i]+.7152*p[i+1]+.0722*p[i+2]}
-      c.updateMatrixWorld(true);v.scene.updateMatrixWorld(true);
-      const project=n=>{const o=v.humanoid?.getNormalizedBoneNode(n);if(!o)return null;o.updateMatrixWorld(true);const mm=o.matrixWorld.elements,x=mm[12],y=mm[13],z=mm[14],view=c.matrixWorldInverse.elements,proj=c.projectionMatrix.elements,vx=view[0]*x+view[4]*y+view[8]*z+view[12],vy=view[1]*x+view[5]*y+view[9]*z+view[13],vz=view[2]*x+view[6]*y+view[10]*z+view[14],vw=view[3]*x+view[7]*y+view[11]*z+view[15],cx=proj[0]*vx+proj[4]*vy+proj[8]*vz+proj[12]*vw,cy=proj[1]*vx+proj[5]*vy+proj[9]*vz+proj[13]*vw,cw=proj[3]*vx+proj[7]*vy+proj[11]*vz+proj[15]*vw,nx=cx/cw,ny=cy/cw;return{x:(nx+1)*.5*w,y:(1-ny)*.5*h}};
-      return{buildId:l.buildId,state:l.state,v47:l.v47,width:w,height:h,count,averageLuma:count?L/count:null,bounds:count?{minX,maxX,minY:h-1-maxY,maxY:h-1-minY,width:maxX-minX+1,height:maxY-minY+1,canvasWidth:w,canvasHeight:h}:null,bones:{head:project('head'),hips:project('hips'),leftShoulder:project('leftUpperArm'),rightShoulder:project('rightUpperArm'),leftElbow:project('leftLowerArm'),leftHand:project('leftHand')},css:{city:getComputedStyle(document.querySelector('.city')).filter,canvas:getComputedStyle(document.querySelector('#canvas')).filter,halo:!!document.querySelector('.character-halo')}};
-    });
-    if(!m)throw new Error(`${name}: metrics unavailable`);
-    if(readyMs>30000)throw new Error(`${name}: ready ${readyMs}`);
-    if(m.buildId!==buildId)throw new Error(`${name}: build ${m.buildId}`);
-    if(!m.v47?.ready||!m.v47?.integration)throw new Error(`${name}: v47 report invalid`);
-    if(Object.keys(m.v47.textures||{}).length)throw new Error(`${name}: unexpected texture recolor`);
-    if(!m.css.halo||!m.css.city.includes('blur')||!m.css.canvas.includes('drop-shadow'))throw new Error(`${name}: integration css missing`);
-    if(pe.length)throw new Error(pe.join('\n'));
-    const fatal=rf.filter(x=>x.includes('.vrm')||x.includes('three')||x.includes('payload-'));
-    if(fatal.length)throw new Error(fatal.join('\n'));
-    if(!m.bounds||m.count<80000)throw new Error(`${name}: avatar pixels`);
-    const top=m.bounds.minY/m.bounds.canvasHeight,hr=m.bounds.height/m.bounds.canvasHeight;
-    if(top<.05||top>.30)throw new Error(`${name}: top ${top}`);
-    if(hr<.45||hr>(name==='closeup'?.98:.93))throw new Error(`${name}: height ${hr}`);
-    const full=await page.screenshot({path:`${out}/${name}.png`,fullPage:true}),canvas=await page.locator('canvas').screenshot({path:`${out}/${name}-canvas.png`});
-    results[name]={...m,readyMs,fullHash:digest(full),canvasHash:digest(canvas),pageErrors:pe,requestFailures:rf};
-    return full;
-  }catch(e){
-    errors.push(e.stack||e.message);
-    await page.screenshot({path:`${out}/${name}-failed.png`,fullPage:true}).catch(()=>{});
-    return null;
-  }finally{await page.close()}
-}
-
-const idle=await capture('idle','mode=capture&framing=standard&action=idle&emotion=relaxed&exposure=.68&scale=.98&fov=30');
-await capture('wave','mode=capture&framing=standard&action=wave&emotion=happy&exposure=.68&scale=.98&fov=30');
-await capture('closeup','mode=capture&framing=closeup&action=idle&emotion=relaxed&exposure=.66&scale=.98&fov=30');
-await browser.close();
-
-if(results.idle){
-  const r=results.idle.v47.materials;
-  if(r.skin?.color!=='fff1ea'||Math.abs(r.skin.emissive-.045)>.006)errors.push(`skin ${JSON.stringify(r.skin)}`);
-  if(r.cardigan?.color!=='d5eee6'||Math.abs(r.cardigan.emissive-.065)>.006)errors.push(`cardigan ${JSON.stringify(r.cardigan)}`);
-  if(r.hair?.color!=='aa8178'||r.hair?.rim!=='7f574d'||Math.abs(r.hair.emissive-.075)>.006)errors.push(`hair ${JSON.stringify(r.hair)}`);
-  const warm=sample(idle,{x:.08,y:.16,w:.25,h:.48}),cool=sample(idle,{x:.66,y:.10,w:.27,h:.42});
-  results.atmosphere={warm,cool,warmRedBlue:warm.r-warm.b,coolBlueRed:cool.b-cool.r};
-  if(warm.r-warm.b<6)errors.push('warm atmosphere');
-  if(cool.b-cool.r<8)errors.push('cool atmosphere');
-}
-
-if(results.wave){
-  const{head,leftShoulder,leftElbow,leftHand}=results.wave.bones;
-  if(![head,leftShoulder,leftElbow,leftHand].every(Boolean))errors.push('wave bones');
-  else{const ax=leftShoulder.x-leftElbow.x,ay=leftShoulder.y-leftElbow.y,bx=leftHand.x-leftElbow.x,by=leftHand.y-leftElbow.y,den=Math.hypot(ax,ay)*Math.hypot(bx,by),ang=Math.acos(Math.max(-1,Math.min(1,(ax*bx+ay*by)/den)))*180/Math.PI;results.waveGesture={elbowAngle:ang,head,leftShoulder,leftElbow,leftHand};if(ang<45||ang>125)errors.push(`wave angle ${ang}`);if(leftHand.y>leftElbow.y-results.wave.height*.02)errors.push('wave hand low')}
-}
-
-if(results.idle&&results.closeup){
-  const sw=x=>Math.abs(x.bones.rightShoulder.x-x.bones.leftShoulder.x),th=x=>Math.abs(x.bones.hips.y-x.bones.head.y),sr=sw(results.closeup)/sw(results.idle),tr=th(results.closeup)/th(results.idle),pr=results.closeup.count/results.idle.count;
-  results.closeupComparison={shoulderRatio:sr,torsoRatio:tr,pixelRatio:pr};
-  if(sr<1.15||sr>1.55)errors.push(`shoulder ${sr}`);
-  if(tr<1.15||tr>1.55)errors.push(`torso ${tr}`);
-  if(pr<1.12)errors.push(`pixels ${pr}`);
-}
-
-if(results.idle&&results.wave&&results.idle.canvasHash===results.wave.canvasHash)errors.push('idle=wave');
-if(results.idle&&results.closeup&&results.idle.canvasHash===results.closeup.canvasHash)errors.push('idle=closeup');
-await writeFile(`${out}/results.json`,JSON.stringify({buildId,results,errors},null,2));
-console.log(JSON.stringify({passed:Object.keys(results),errors},null,2));
-if(errors.length)process.exitCode=1;
+function sample(buffer,r){const p=PNG.sync.read(buffer),x0=Math.floor(r.x*p.width),y0=Math.floor(r.y*p.height),x1=Math.ceil((r.x+r.w)*p.width),y1=Math.ceil((r.y+r.h)*p.height);let R=0,G=0,B=0,n=0;for(let y=y0;y<y1;y+=2)for(let x=x0;x<x1;x+=2){const i=(y*p.width+x)*4;R+=p.data[i];G+=p.data[i+1];B+=p.data[i+2];n++}return{r:R/n,g:G/n,b:B/n,luma:(.2126*R+.7152*G+.0722*B)/n}}
+async function capture(name,query){const page=await browser.newPage({viewport:{width:1600,height:900},deviceScaleFactor:1});const pe=[],rf=[];page.on('pageerror',e=>pe.push(e.stack||e.message));page.on('requestfailed',r=>rf.push(`${r.url()} :: ${r.failure()?.errorText}`));const t=Date.now();try{await page.goto(`${base}/?${query}`,{waitUntil:'domcontentloaded',timeout:90000});await page.waitForFunction(()=>document.querySelector('#model-status')?.textContent==='角色已就绪',{timeout:30000});const readyMs=Date.now()-t;await page.waitForTimeout(3200);const m=await page.evaluate(()=>{const l=window.__vrmLab,v=l?.vrm,r=l?.renderer,c=l?.camera,g=r?.getContext?.(),cv=r?.domElement;if(!v||!r||!c||!g||!cv)return null;const w=cv.width,h=cv.height,p=new Uint8Array(w*h*4);g.readPixels(0,0,w,h,g.RGBA,g.UNSIGNED_BYTE,p);let minX=w,maxX=-1,minY=h,maxY=-1,count=0,L=0;for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4;if(p[i+3]<=24)continue;count++;minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);L+=.2126*p[i]+.7152*p[i+1]+.0722*p[i+2]}c.updateMatrixWorld(true);v.scene.updateMatrixWorld(true);const project=n=>{const o=v.humanoid?.getNormalizedBoneNode(n);if(!o)return null;o.updateMatrixWorld(true);const m=o.matrixWorld.elements,x=m[12],y=m[13],z=m[14],view=c.matrixWorldInverse.elements,proj=c.projectionMatrix.elements,vx=view[0]*x+view[4]*y+view[8]*z+view[12],vy=view[1]*x+view[5]*y+view[9]*z+view[13],vz=view[2]*x+view[6]*y+view[10]*z+view[14],vw=view[3]*x+view[7]*y+view[11]*z+view[15],cx=proj[0]*vx+proj[4]*vy+proj[8]*vz+proj[12]*vw,cy=proj[1]*vx+proj[5]*vy+proj[9]*vz+proj[13]*vw,cw=proj[3]*vx+proj[7]*vy+proj[11]*vz+proj[15]*vw,nx=cx/cw,ny=cy/cw;return{x:(nx+1)*.5*w,y:(1-ny)*.5*h}};return{buildId:l.buildId,state:l.state,v47:l.v47,width:w,height:h,count,averageLuma:count?L/count:null,bounds:count?{minX,maxX,minY:h-1-maxY,maxY:h-1-minY,width:maxX-minX+1,height:maxY-minY+1,canvasWidth:w,canvasHeight:h}:null,bones:{head:project('head'),hips:project('hips'),leftShoulder:project('leftUpperArm'),rightShoulder:project('rightUpperArm'),leftElbow:project('leftLowerArm'),leftHand:project('leftHand')},css:{city:getComputedStyle(document.querySelector('.city')).filter,canvas:getComputedStyle(document.querySelector('#canvas')).filter,halo:!!document.querySelector('.character-halo')}}});if(!m)throw new Error(`${name}: metrics unavailable`);if(readyMs>30000)throw new Error(`${name}: ready ${readyMs}`);if(m.buildId!==buildId)throw new Error(`${name}: build ${m.buildId}`);if(!m.v47?.ready||!m.v47?.integration)throw new Error(`${name}: v47 report invalid`);if(Object.keys(m.v47.textures||{}).length)throw new Error(`${name}: unexpected texture recolor`);if(!m.css.halo||!m.css.city.includes('blur')||!m.css.canvas.includes('drop-shadow'))throw new Error(`${name}: integration css missing`);if(pe.length)throw new Error(pe.join('\n'));const fatal=rf.filter(x=>x.includes('.vrm')||x.includes('three')||x.includes('payload-'));if(fatal.length)throw new Error(fatal.join('\n'));if(!m.bounds||m.count<80000)throw new Error(`${name}: avatar pixels`);const top=m.bounds.minY/m.bounds.canvasHeight,hr=m.bounds.height/m.bounds.canvasHeight;if(top<.05||top>.30)throw new Error(`${name}: top ${top}`);if(hr<.45||hr>(name==='closeup'?.98:.93))throw new Error(`${name}: height ${hr}`);const full=await page.screenshot({path:`${out}/${name}.png`,fullPage:true}),canvas=await page.locator('canvas').screenshot({path:`${out}/${name}-canvas.png`});results[name]={...m,readyMs,fullHash:digest(full),canvasHash:digest(canvas),pageErrors:pe,requestFailures:rf};return full}catch(e){errors.push(e.stack||e.message);await page.screenshot({path:`${out}/${name}-failed.png`,fullPage:true}).catch(()=>{});return null}finally{await page.close()}}
+const idle=await capture('idle','mode=capture&framing=standard&action=idle&emotion=relaxed&exposure=.68&scale=.98&fov=30');await capture('wave','mode=capture&framing=standard&action=wave&emotion=happy&exposure=.68&scale=.98&fov=30');await capture('closeup','mode=capture&framing=closeup&action=idle&emotion=relaxed&exposure=.66&scale=.98&fov=30');await browser.close();
+if(results.idle){const r=results.idle.v47.materials;if(r.skin?.color!=='fff1ea'||Math.abs(r.skin.emissive-.045)>.006)errors.push(`skin ${JSON.stringify(r.skin)}`);if(r.cardigan?.color!=='d5eee6'||Math.abs(r.cardigan.emissive-.065)>.006)errors.push(`cardigan ${JSON.stringify(r.cardigan)}`);if(r.hair?.color!=='aa8178'||r.hair?.shade!=='2c1216'||Math.abs(r.hair.emissive-.075)>.006)errors.push(`hair ${JSON.stringify(r.hair)}`);const warm=sample(idle,{x:.08,y:.16,w:.25,h:.48}),cool=sample(idle,{x:.66,y:.10,w:.27,h:.42});results.atmosphere={warm,cool,warmRedBlue:warm.r-warm.b,coolBlueRed:cool.b-cool.r};if(warm.r-warm.b<6)errors.push('warm atmosphere');if(cool.b-cool.r<8)errors.push('cool atmosphere')}
+if(results.wave){const{head,leftShoulder,leftElbow,leftHand}=results.wave.bones;if(![head,leftShoulder,leftElbow,leftHand].every(Boolean))errors.push('wave bones');else{const ax=leftShoulder.x-leftElbow.x,ay=leftShoulder.y-leftElbow.y,bx=leftHand.x-leftElbow.x,by=leftHand.y-leftElbow.y,den=Math.hypot(ax,ay)*Math.hypot(bx,by),ang=Math.acos(Math.max(-1,Math.min(1,(ax*bx+ay*by)/den)))*180/Math.PI;results.waveGesture={elbowAngle:ang,head,leftShoulder,leftElbow,leftHand};if(ang<45||ang>125)errors.push(`wave angle ${ang}`);if(leftHand.y>leftElbow.y-results.wave.height*.02)errors.push('wave hand low')}}
+if(results.idle&&results.closeup){const sw=x=>Math.abs(x.bones.rightShoulder.x-x.bones.leftShoulder.x),th=x=>Math.abs(x.bones.hips.y-x.bones.head.y),sr=sw(results.closeup)/sw(results.idle),tr=th(results.closeup)/th(results.idle),pr=results.closeup.count/results.idle.count;results.closeupComparison={shoulderRatio:sr,torsoRatio:tr,pixelRatio:pr};if(sr<1.15||sr>1.55)errors.push(`shoulder ${sr}`);if(tr<1.15||tr>1.55)errors.push(`torso ${tr}`);if(pr<1.12)errors.push(`pixels ${pr}`)}
+if(results.idle&&results.wave&&results.idle.canvasHash===results.wave.canvasHash)errors.push('idle=wave');if(results.idle&&results.closeup&&results.idle.canvasHash===results.closeup.canvasHash)errors.push('idle=closeup');await writeFile(`${out}/results.json`,JSON.stringify({buildId,results,errors},null,2));console.log(JSON.stringify({passed:Object.keys(results),errors},null,2));if(errors.length)process.exitCode=1;
