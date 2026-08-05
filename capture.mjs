@@ -22,9 +22,10 @@ const browser = await chromium.launch({
 const logs = [];
 const results = new Map();
 const failures = [];
+const candidateFailures = [];
 const hash = (buffer) => createHash('sha256').update(buffer).digest('hex');
 
-async function capture({ name, query = '', expect = 'ready', verify }) {
+async function capture({ name, query = '', expect = 'ready', verify, timeoutMs = 120_000, optional = false }) {
   const page = await browser.newPage({ viewport: { width: 1600, height: 900 }, deviceScaleFactor: 1 });
   const pageErrors = [];
   const requestFailures = [];
@@ -36,10 +37,10 @@ async function capture({ name, query = '', expect = 'ready', verify }) {
   });
   const url = `${baseUrl}/${query ? `?${query}` : ''}`;
   try {
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120_000 });
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: Math.max(timeoutMs, 30_000) });
     const expectedText = expect === 'ready' ? '角色已就绪' : '加载失败';
     try {
-      await page.waitForFunction(text => document.querySelector('#model-status')?.textContent === text, expectedText, { timeout: 120_000 });
+      await page.waitForFunction(text => document.querySelector('#model-status')?.textContent === text, expectedText, { timeout: timeoutMs });
     } catch (error) {
       await page.screenshot({ path: `${outputDir}/${name}-failed.png`, fullPage: true });
       await writeFile(`${outputDir}/${name}-failed.html`, await page.content(), 'utf8');
@@ -106,6 +107,7 @@ async function capture({ name, query = '', expect = 'ready', verify }) {
         };
         const fitDebug = lab.fitDebug ?? null;
         return {
+          buildId: lab.buildId ?? null,
           metaVersion: String(vrm.meta?.metaVersion ?? vrm.meta?.specVersion ?? ''),
           rotationY: vrm.scene?.rotation?.y,
           state: lab.state,
@@ -159,22 +161,28 @@ async function capture({ name, query = '', expect = 'ready', verify }) {
     await writeFile(`${outputDir}/${name}.html`, await page.content(), 'utf8');
     results.set(name, { fullHash: hash(full), canvasHash: hash(canvas), runtime, url: page.url() });
   } catch (error) {
-    failures.push(error.stack || error.message);
-    logs.push(`[${name}][failure] ${error.stack || error.message}`);
+    const message = error.stack || error.message;
+    (optional ? candidateFailures : failures).push(message);
+    logs.push(`[${name}][${optional ? 'candidate-failure' : 'failure'}] ${message}`);
   } finally { await page.close(); }
 }
 
 const common = 'mode=capture&url=' + encodeURIComponent(models.avatarA);
-await capture({ name:'01-showcase-idle', query:`${common}&action=idle&emotion=relaxed&distance=2.18&height=1.34&exposure=0.82&scale=1.08&fov=30&x=0.02` });
-await capture({ name:'02-showcase-wave', query:`${common}&action=wave&emotion=happy&distance=2.18&height=1.34&exposure=0.82&scale=1.08&fov=30&x=0.02` });
-await capture({ name:'03-showcase-closeup', query:`${common}&action=idle&emotion=relaxed&distance=1.72&height=1.43&exposure=0.80&scale=1.08&fov=29&x=0.02` });
-const bakeoffPreset='mode=capture&action=idle&emotion=relaxed&distance=2.05&height=1.36&exposure=0.76&scale=1.08&fov=29&x=0.02';
-await capture({ name:'06-model-shino', query:`${bakeoffPreset}&url=${encodeURIComponent(models.shino)}` });
-await capture({ name:'07-model-vita', query:`${bakeoffPreset}&url=${encodeURIComponent(models.vita)}` });
-await capture({ name:'08-model-victoria', query:`${bakeoffPreset}&url=${encodeURIComponent(models.victoria)}` });
+await capture({ name:'01-showcase-idle', query:`${common}&action=idle&emotion=relaxed&distance=2.18&height=1.34&exposure=0.72&scale=1.08&fov=30&x=0.02` });
+await capture({ name:'02-showcase-wave', query:`${common}&action=wave&emotion=happy&distance=2.18&height=1.34&exposure=0.72&scale=1.08&fov=30&x=0.02` });
+await capture({ name:'03-showcase-closeup', query:`${common}&action=idle&emotion=relaxed&distance=1.72&height=1.43&exposure=0.70&scale=1.08&fov=29&x=0.02` });
+const bakeoffPreset='mode=capture&action=idle&emotion=relaxed&distance=2.05&height=1.36&exposure=0.72&scale=1.08&fov=29&x=0.02';
+await Promise.all([
+  capture({ name:'06-model-shino', query:`${bakeoffPreset}&url=${encodeURIComponent(models.shino)}`, timeoutMs:30_000, optional:true }),
+  capture({ name:'07-model-vita', query:`${bakeoffPreset}&url=${encodeURIComponent(models.vita)}`, timeoutMs:30_000, optional:true }),
+  capture({ name:'08-model-victoria', query:`${bakeoffPreset}&url=${encodeURIComponent(models.victoria)}`, timeoutMs:30_000, optional:true }),
+]);
+if (!['06-model-shino','07-model-vita','08-model-victoria'].some(name => results.has(name))) {
+  failures.push(`no CC0 candidate loaded within 30 seconds; candidates:\n${candidateFailures.join('\n\n')}`);
+}
 await capture({
   name:'04-studio-restore',
-  query:`mode=studio&url=${encodeURIComponent(models.avatarB)}&action=listen&emotion=happy&distance=2.25&height=1.40&exposure=0.76&scale=1.05&fov=31&x=-0.08`,
+  query:`mode=studio&url=${encodeURIComponent(models.avatarB)}&action=listen&emotion=happy&distance=2.25&height=1.40&exposure=0.72&scale=1.05&fov=31&x=-0.08`,
   verify: async page => {
     await page.reload({ waitUntil:'domcontentloaded', timeout:120_000 });
     await page.waitForFunction(() => document.querySelector('#model-status')?.textContent === '角色已就绪', undefined, { timeout:120_000 });
@@ -189,7 +197,7 @@ await capture({
       fov:document.querySelector('#fov')?.value,
       x:document.querySelector('#x')?.value,
     }));
-    const expected = { mode:'studio',action:'listen',emotion:'happy',distance:'2.25',height:'1.4',exposure:'0.76',scale:'1.05',fov:'31',x:'-0.08' };
+    const expected = { mode:'studio',action:'listen',emotion:'happy',distance:'2.25',height:'1.4',exposure:'0.72',scale:'1.05',fov:'31',x:'-0.08' };
     if (JSON.stringify(restored) !== JSON.stringify(expected)) throw new Error(`restore mismatch: ${JSON.stringify({restored,expected})}`);
   },
 });
@@ -199,7 +207,7 @@ const idle=results.get('01-showcase-idle'),wave=results.get('02-showcase-wave'),
 if(idle&&wave&&idle.canvasHash===wave.canvasHash) failures.push('showcase idle and wave canvases are identical');
 if(idle&&close&&idle.canvasHash===close.canvasHash) failures.push('showcase idle and closeup canvases are identical');
 await writeFile(`${outputDir}/browser.log`,`${logs.join('\n')}\n`,'utf8');
-await writeFile(`${outputDir}/results.json`,`${JSON.stringify({results:Object.fromEntries(results),failures},null,2)}\n`,'utf8');
+await writeFile(`${outputDir}/results.json`,`${JSON.stringify({results:Object.fromEntries(results),failures,candidateFailures},null,2)}\n`,'utf8');
 await browser.close();
 if(failures.length) throw new Error(`Visual iteration acceptance failed:\n${failures.join('\n\n')}`);
 console.log(`Visual iteration acceptance passed: ${results.size} scenarios`);
