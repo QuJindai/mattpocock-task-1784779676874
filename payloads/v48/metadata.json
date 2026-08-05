@@ -1,0 +1,15 @@
+{
+  "buildId": "visual-avatar-a-v4-8-20260805",
+  "htmlBytes": 28497,
+  "htmlSha256": "b7f812826e30786c1a1d334e7d74df0d40c378024b23de6503a489b00f8698bf",
+  "encodedLength": 13264,
+  "encodedSha256": "6c4a1090243a93067ae988a6f693ddcef5b1435fd6dca7d56ba222dc1f0fc003",
+  "chunks": [
+    {"name": "payload-1.txt", "length": 2400, "sha256": "d84818853226a108a4124567efe2e82faf7cf0229bb9f9405b9f6897c955151c"},
+    {"name": "payload-2.txt", "length": 2400, "sha256": "f7f199388f6ed6e90259400371f565850d95f8297978d3fefe495a23c7439042"},
+    {"name": "payload-3.txt", "length": 2400, "sha256": "16bb8a70f68a8869f174cd030c6667bfca50b44f57da7959df639c813be96e17"},
+    {"name": "payload-4.txt", "length": 2400, "sha256": "c06171d92b7e293ac34f46730dc816fa82ef019f8e5fd646986311312678a2c1"},
+    {"name": "payload-5.txt", "length": 2400, "sha256": "30490af06c84ff60d4aea94ed8ca8df0d154871eb392bea13a33a999c2b5187c"},
+    {"name": "payload-6.txt", "length": 1264, "sha256": "9667c987d4a38e9dac5bc6362c701ac722cf02beb2d4275cdf811fbb82fe4375"}
+  ]
+}
