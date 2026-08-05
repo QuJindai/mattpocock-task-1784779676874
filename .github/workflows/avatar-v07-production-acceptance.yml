@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 20
     env:
       AVATAR_URL: https://avatar-showcase-lab.vercel.app
-      AVATAR_ASSET_COMMIT: 9df5760e1dfd54b23c6ae01c20725cb680a6d8fb
+      AVATAR_ASSET_COMMIT: b7ecb5ea48f8b50ada8e1b92bbf596208e9fef98
     steps:
       - name: Checkout isolated branch
         uses: actions/checkout@v4
