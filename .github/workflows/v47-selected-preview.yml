@@ -1,0 +1,59 @@
+name: V4.7 Selected Preview
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - v47-build-selected.py
+      - v47-selected-smoke.mjs
+      - .github/workflows/v47-selected-preview.yml
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify locked candidate generator
+        run: python v47-build-candidates.test.py
+      - name: Build selected hybrid
+        run: python v47-build-selected.py
+      - name: Verify selected module syntax
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re, subprocess
+          html=Path('v47-selected-site/index.html').read_text()
+          script=re.search(r'<script type="module">(.*?)</script>',html,re.S).group(1)
+          Path('/tmp/v47-selected.mjs').write_text(script)
+          subprocess.run(['node','--check','/tmp/v47-selected.mjs'],check=True)
+          PY
+      - name: Install browser controller
+        run: |
+          npm install playwright pngjs wait-on
+          google-chrome --version || google-chrome-stable --version
+      - name: Start selected Preview
+        run: |
+          cd v47-selected-site
+          python3 -m http.server 4173 --bind 127.0.0.1 > ../v47-selected-server.log 2>&1 &
+          cd ..
+          npx wait-on http://127.0.0.1:4173 --timeout 120000
+      - name: Run selected V4.7 gates
+        env:
+          V47_SELECTED_URL: http://127.0.0.1:4173
+        run: node v47-selected-smoke.mjs
+      - name: Upload selected Preview evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v47-selected-preview
+          path: |
+            v47-selected-smoke
+            v47-selected-site/index.html
+            v47-selected-site/metadata.json
+            v47-selected-server.log
+          retention-days: 14
