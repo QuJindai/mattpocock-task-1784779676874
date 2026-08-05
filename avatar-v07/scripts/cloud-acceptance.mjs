@@ -163,7 +163,8 @@ try {
   const restored = await restorePage.evaluate(() => window.__avatarLab.state);
   const expectedRestore = {
     renderer: 'frame-blend', character: 'formal-v1', state: 'happy', expression: 'happy', autoplay: false,
-    scale: 1.17, x: 18, y: -12, warmth: 0.24, blur: 2.2, parallax: 14, exposure: 0.93, time: null,
+    scale: 1.17, x: 18, y: -12, warmth: 0.24, blur: 2.2, parallax: 14, exposure: 0.93,
+    voice: '', rate: 1, pitch: 1, volume: 1, time: null,
   };
   if (JSON.stringify(restored) !== JSON.stringify(expectedRestore)) throw new Error(`URL state restoration mismatch: ${JSON.stringify({ restored, expectedRestore })}`);
   results.restore = restored;
@@ -193,7 +194,7 @@ try {
   results.expectedCommit = expectedCommit;
   await writeFile(`${outputDir}/browser.log`, `${logs.join('\n')}\n`, 'utf8');
   await writeFile(`${outputDir}/results.json`, `${JSON.stringify(results, null, 2)}\n`, 'utf8');
-  console.log('Avatar Showcase v0.7 cloud acceptance passed');
+  console.log('Avatar Showcase visual regression passed');
 } catch (error) {
   results.status = 'fail';
   results.error = error.stack || error.message;

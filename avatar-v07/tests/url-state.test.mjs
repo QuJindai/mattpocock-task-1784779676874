@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { DEFAULT_URL_STATE, parseUrlState, serializeUrlState } from '../src/url-state.js';
 
 test('restores supported values and clamps numbers', () => {
-  const state = parseUrlState('?state=talk&expression=happy&autoplay=0&scale=9&x=-2000');
+  const state = parseUrlState('?state=talk&expression=happy&autoplay=0&scale=9&x=-2000&voice=zh-local&rate=9&pitch=0.1&volume=-2');
   assert.deepEqual(state, {
     renderer: 'frame-blend',
     character: 'formal-v1',
@@ -17,6 +17,10 @@ test('restores supported values and clamps numbers', () => {
     blur: 1.2,
     parallax: 10,
     exposure: 1,
+    voice: 'zh-local',
+    rate: 1.6,
+    pitch: 0.7,
+    volume: 0,
     time: null,
   });
 });
@@ -30,4 +34,21 @@ test('ignores unknown values and round-trips defaults', () => {
 test('restores fixed capture time', () => {
   assert.equal(parseUrlState('?time=1250').time, 1250);
   assert.equal(parseUrlState('?time=-5').time, 0);
+});
+
+test('serializes speech settings but never serializes spoken text', () => {
+  const query = serializeUrlState({
+    ...DEFAULT_URL_STATE,
+    voice: 'zh-local',
+    rate: 1.25,
+    pitch: 1.1,
+    volume: 0.7,
+    text: '这段内容不应写入URL',
+  });
+  assert.match(query, /voice=zh-local/);
+  assert.match(query, /rate=1.25/);
+  assert.match(query, /pitch=1.1/);
+  assert.match(query, /volume=0.7/);
+  assert.doesNotMatch(query, /text=/);
+  assert.doesNotMatch(decodeURIComponent(query), /这段内容/);
 });

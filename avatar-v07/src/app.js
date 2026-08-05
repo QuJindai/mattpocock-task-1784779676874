@@ -1,9 +1,12 @@
 import { AvatarController } from './avatar-controller.js';
+import { BrowserSpeechEngine } from './browser-speech-engine.js';
 import { DeterministicClock } from './deterministic-clock.js';
 import { splitFrameDelta } from './frame-delta.js';
 import { createPixiAdapter } from './pixi-adapter.js';
+import { getRendererCapabilities } from './renderer-capabilities.js';
 import { createAvatarRenderer } from './renderer-factory.js';
 import { ShowcaseTimeline } from './showcase-timeline.js';
+import { SpeechAvatarBridge } from './speech-avatar-bridge.js';
 import { parseUrlState, serializeUrlState } from './url-state.js';
 
 const ROUTES = new Set(['studio', 'showcase', 'capture', 'compare']);
@@ -18,13 +21,24 @@ if (mode === 'studio' && !query.has('autoplay')) state.autoplay = false;
 if (mode === 'capture') state.autoplay = false;
 
 document.body.classList.add(`mode-${mode}`);
-document.querySelector('#route-label').textContent = `${mode.toUpperCase()} · FRAME BLEND · v0.7`;
+document.querySelector('#route-label').textContent = `${mode.toUpperCase()} · FRAME BLEND · v0.8`;
 
 const appRoot = document.querySelector('#app');
 const avatarSurface = document.querySelector('.avatar-surface');
 const sceneBackground = document.querySelector('.scene-background');
 const statusEl = document.querySelector('#showcase-status');
 const autoplayEl = document.querySelector('#autoplay');
+const speechTextEl = document.querySelector('#speech-text');
+const speechVoiceEl = document.querySelector('#speech-voice');
+const speechRateEl = document.querySelector('#speech-rate');
+const speechPitchEl = document.querySelector('#speech-pitch');
+const speechVolumeEl = document.querySelector('#speech-volume');
+const speechRateOutput = document.querySelector('#out-speech-rate');
+const speechPitchOutput = document.querySelector('#out-speech-pitch');
+const speechVolumeOutput = document.querySelector('#out-speech-volume');
+const speechPlayEl = document.querySelector('#speech-play');
+const speechStopEl = document.querySelector('#speech-stop');
+const speechSupportEl = document.querySelector('#speech-support');
 
 function setStatus(text, level = 'info') {
   statusEl.textContent = text;
@@ -113,6 +127,7 @@ async function loadCharacterAsset() {
 
 const adapter = createPixiAdapter();
 const renderer = createAvatarRenderer(state.renderer, { adapter });
+const capabilities = getRendererCapabilities(state.renderer);
 const controller = new AvatarController(renderer);
 await controller.mount(avatarSurface);
 const [loaded, background] = await Promise.all([loadCharacterAsset(), loadBackgroundAsset()]);
@@ -126,10 +141,87 @@ const timeline = new ShowcaseTimeline(controller, {
 timeline.setPhase(state.state);
 if (mode !== 'showcase') timeline.setAutoplay(false);
 
+const speechEngine = new BrowserSpeechEngine();
+const speechBridge = new SpeechAvatarBridge(controller, { now: () => performance.now() });
+let speechSessionId = 0;
+let resumeAutoplayAfterSpeech = false;
+let speechCleanedUp = false;
+
+function setSpeechSupport(text, level = 'info') {
+  if (!speechSupportEl) return;
+  speechSupportEl.textContent = text;
+  speechSupportEl.dataset.level = level;
+}
+
+function updateSpeechButtons() {
+  if (!speechPlayEl || !speechStopEl) return;
+  speechPlayEl.disabled = !speechEngine.supported || speechEngine.speaking;
+  speechStopEl.disabled = !speechEngine.speaking;
+}
+
+function populateSpeechVoices() {
+  if (!speechVoiceEl) return speechEngine.voices;
+  const requested = state.voice;
+  speechVoiceEl.replaceChildren(new Option('浏览器默认', ''));
+  for (const voice of speechEngine.voices) {
+    const locality = voice.localService ? ' · 本地' : '';
+    speechVoiceEl.add(new Option(`${voice.name} · ${voice.lang}${locality}`, voice.id));
+  }
+  speechVoiceEl.value = [...speechVoiceEl.options].some((option) => option.value === requested) ? requested : '';
+  if (speechEngine.supported) {
+    setSpeechSupport(speechEngine.voices.length ? `${speechEngine.voices.length} 个系统音色` : '将使用浏览器默认音色', 'ready');
+  } else {
+    setSpeechSupport('当前浏览器不支持TTS', 'warning');
+  }
+  updateSpeechButtons();
+  return speechEngine.voices;
+}
+
+function restoreTimelineAfterSpeech(sessionId) {
+  if (sessionId !== speechSessionId || speechEngine.speaking) return;
+  if (resumeAutoplayAfterSpeech && state.autoplay && mode === 'showcase') timeline.setAutoplay(true);
+  resumeAutoplayAfterSpeech = false;
+}
+
+async function speakText(text, options = {}) {
+  const sessionId = ++speechSessionId;
+  if (!speechEngine.speaking) resumeAutoplayAfterSpeech = timeline.diagnostics.autoplay;
+  timeline.setAutoplay(false);
+  const speechOptions = {
+    voice: state.voice,
+    rate: state.rate,
+    pitch: state.pitch,
+    volume: state.volume,
+    lang: 'zh-CN',
+    ...options,
+  };
+  try {
+    return await speechEngine.speak(text, speechOptions);
+  } finally {
+    restoreTimelineAfterSpeech(sessionId);
+    updateSpeechButtons();
+  }
+}
+
+function stopSpeaking() {
+  return speechEngine.stop();
+}
+
+const unsubscribeSpeech = speechEngine.subscribe((event) => {
+  speechBridge.handleEvent(event);
+  if (event.type === 'voiceschanged') populateSpeechVoices();
+  else if (event.type === 'start') setSpeechSupport('正在朗读', 'active');
+  else if (event.type === 'end') setSpeechSupport('朗读完成', 'ready');
+  else if (event.type === 'cancel') setSpeechSupport('已停止', 'info');
+  else if (event.type === 'error') setSpeechSupport(`朗读失败：${event.error?.code || 'unknown'}`, 'warning');
+  updateSpeechButtons();
+});
+
 applyPresentation();
 if (autoplayEl) autoplayEl.checked = state.autoplay;
 const degraded = loaded.degraded || background.degraded;
-setStatus(degraded ? '资源降级：部分正式资产不可用' : '关键帧与正式场景已就绪', degraded ? 'warning' : 'ready');
+setStatus(degraded ? '资源降级：部分正式资产不可用' : '关键帧、正式场景与浏览器语音已就绪', degraded ? 'warning' : 'ready');
+populateSpeechVoices();
 
 function resizeRenderer() {
   const rect = avatarSurface.getBoundingClientRect();
@@ -145,6 +237,42 @@ function updateActiveButtons() {
   document.querySelectorAll('[data-expression]').forEach((button) => {
     button.classList.toggle('on', button.dataset.expression === state.expression);
   });
+}
+
+function bindSpeechControls() {
+  if (mode !== 'studio') return;
+  speechRateEl.value = state.rate;
+  speechPitchEl.value = state.pitch;
+  speechVolumeEl.value = state.volume;
+  speechRateOutput.value = state.rate;
+  speechPitchOutput.value = state.pitch;
+  speechVolumeOutput.value = state.volume;
+  speechVoiceEl.value = state.voice;
+
+  speechVoiceEl.addEventListener('change', () => {
+    state.voice = speechVoiceEl.value;
+    syncQuery();
+  });
+  for (const [input, output, key] of [
+    [speechRateEl, speechRateOutput, 'rate'],
+    [speechPitchEl, speechPitchOutput, 'pitch'],
+    [speechVolumeEl, speechVolumeOutput, 'volume'],
+  ]) {
+    input.addEventListener('input', () => {
+      state[key] = Number(input.value);
+      output.value = input.value;
+      syncQuery();
+    });
+  }
+  speechPlayEl.addEventListener('click', async () => {
+    try {
+      await speakText(speechTextEl.value);
+    } catch (error) {
+      console.error(error);
+      setSpeechSupport(error.message || String(error), 'warning');
+    }
+  });
+  speechStopEl.addEventListener('click', () => stopSpeaking());
 }
 
 function bindStudioControls() {
@@ -184,6 +312,7 @@ function bindStudioControls() {
     });
   }
   updateActiveButtons();
+  bindSpeechControls();
 }
 bindStudioControls();
 
@@ -206,7 +335,7 @@ let lastPhase = timeline.diagnostics.phase;
 
 function updateRouteStateFromTimeline() {
   const diagnostics = timeline.diagnostics;
-  if (diagnostics.phase === lastPhase) return;
+  if (diagnostics.phase === lastPhase || speechEngine.speaking) return;
   lastPhase = diagnostics.phase;
   state.state = diagnostics.phase;
   state.expression = diagnostics.phase === 'happy'
@@ -223,6 +352,7 @@ function updateRouteStateFromTimeline() {
 function renderStep(timelineDeltaMs, rendererDeltaMs = timelineDeltaMs) {
   clock.tick(timelineDeltaMs);
   timeline.tick(timelineDeltaMs);
+  speechBridge.update();
   controller.update(rendererDeltaMs);
   updateRouteStateFromTimeline();
 }
@@ -236,8 +366,21 @@ function animationLoop(now) {
   requestAnimationFrame(animationLoop);
 }
 
+const speechApi = {
+  get supported() { return speechEngine.supported; },
+  get speaking() { return speechEngine.speaking; },
+  get voices() { return speechEngine.voices; },
+  speak(text, options = {}) { return speakText(text, options); },
+  stop() { return stopSpeaking(); },
+  refreshVoices() { speechEngine.refreshVoices(); return populateSpeechVoices(); },
+  get diagnostics() {
+    return { engine: speechEngine.diagnostics, bridge: speechBridge.diagnostics };
+  },
+};
+
 window.__avatarLab = {
   rendererKind: 'frame-blend',
+  capabilities,
   mode,
   state,
   manifest: loaded.manifest,
@@ -245,11 +388,15 @@ window.__avatarLab = {
   background,
   assetBase: APP_BASE_URL.href,
   frameBase: FRAME_BASE_URL.href,
+  speech: speechApi,
+  speak(text, options = {}) { return speechApi.speak(text, options); },
+  stopSpeaking() { return speechApi.stop(); },
   ready: false,
   get diagnostics() {
     return {
       controller: controller.diagnostics,
       timeline: timeline.diagnostics,
+      speech: speechApi.diagnostics,
       clockMs: clock.now(),
       background: sceneBackground.style.backgroundImage || 'css-static',
     };
@@ -280,6 +427,16 @@ window.__avatarLab = {
   },
   capture: () => controller.capture(),
 };
+
+function cleanupSpeech() {
+  if (speechCleanedUp) return;
+  speechCleanedUp = true;
+  speechEngine.stop();
+  unsubscribeSpeech();
+  speechEngine.destroy();
+}
+addEventListener('pagehide', cleanupSpeech, { once: true });
+addEventListener('beforeunload', cleanupSpeech, { once: true });
 
 if (mode === 'capture') {
   const fixedTime = state.time ?? 0;
