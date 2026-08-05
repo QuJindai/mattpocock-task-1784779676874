@@ -1,0 +1,49 @@
+name: V4.7 Visual Bake-off
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - v47-build-candidates.py
+      - v47-build-candidates.test.py
+      - v47-visual-bakeoff.mjs
+      - .github/workflows/v47-visual-bakeoff.yml
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify candidate generator scope
+        run: python v47-build-candidates.test.py
+      - name: Build V4.7 candidates
+        run: python v47-build-candidates.py
+      - name: Install browser controller
+        run: |
+          npm install playwright pngjs wait-on
+          google-chrome --version || google-chrome-stable --version
+      - name: Start candidate server
+        run: |
+          cd v47-site
+          python3 -m http.server 4173 --bind 127.0.0.1 > ../v47-server.log 2>&1 &
+          cd ..
+          npx wait-on http://127.0.0.1:4173 --timeout 120000
+      - name: Render A B C candidates
+        env:
+          V47_URL: http://127.0.0.1:4173
+        run: node v47-visual-bakeoff.mjs
+      - name: Upload visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v47-visual-bakeoff
+          path: |
+            v47-visual-bakeoff
+            v47-site/manifest.json
+            v47-server.log
+          retention-days: 14
