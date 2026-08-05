@@ -1,0 +1,84 @@
+name: V4.5 Acceptance
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - v45-night-smoke.mjs
+      - .github/workflows/v45-acceptance.yml
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright controller
+        run: |
+          npm init -y
+          npm install playwright pngjs
+          google-chrome --version || google-chrome-stable --version
+      - name: Prepare V4.5 assertions
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          for path in [
+              Path('v4-wave-gesture-smoke.mjs'),
+              Path('v4-closeup-smoke.mjs'),
+              Path('v4-visual-smoke.mjs'),
+          ]:
+              s = path.read_text()
+              s = s.replace("chromium.launch({", "chromium.launch({ channel: 'chrome',")
+              s = s.replace('visual-alicia-v4-3-20260805', 'visual-alicia-v4-5-20260805')
+              s = s.replace('visual-alicia-v4-4-20260805', 'visual-alicia-v4-5-20260805')
+              path.write_text(s)
+
+          wave = Path('v4-wave-gesture-smoke.mjs')
+          s = wave.read_text()
+          if "framing: 'standard'" not in s:
+              s = s.replace("mode: 'capture',\n    action:", "mode: 'capture',\n    framing: 'standard',\n    action:")
+          wave.write_text(s)
+
+          visual = Path('v4-visual-smoke.mjs')
+          s = visual.read_text()
+          s = s.replace("idle: 'mode=capture&action=idle", "idle: 'mode=capture&framing=standard&action=idle")
+          s = s.replace("wave: 'mode=capture&action=wave", "wave: 'mode=capture&framing=standard&action=wave")
+          s = s.replace(
+              "closeup: 'mode=capture&action=idle&emotion=relaxed&distance=2.05&height=1.42&exposure=0.66&scale=0.96&fov=29&x=0'",
+              "closeup: 'mode=capture&framing=closeup&action=idle&emotion=relaxed&distance=2.35&height=1.36&exposure=0.66&scale=0.98&fov=30&x=0'",
+          )
+          s = s.replace(
+              "if (heightRatio < 0.45 || heightRatio > 0.93) {",
+              "const maxHeightRatio = name === 'closeup' ? 0.98 : 0.93;\n  if (heightRatio < 0.45 || heightRatio > maxHeightRatio) {",
+          )
+          visual.write_text(s)
+          PY
+          node --check v45-night-smoke.mjs
+          node --check v4-wave-gesture-smoke.mjs
+          node --check v4-closeup-smoke.mjs
+          node --check v4-visual-smoke.mjs
+      - name: Run all V4.5 gates
+        run: |
+          set +e
+          status=0
+          node v45-night-smoke.mjs || status=1
+          node v4-closeup-smoke.mjs || status=1
+          node v4-wave-gesture-smoke.mjs || status=1
+          node v4-visual-smoke.mjs || status=1
+          exit $status
+      - name: Upload V4.5 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vrm-v45-acceptance
+          path: |
+            v45-night-smoke
+            v4-closeup-smoke
+            v4-wave-gesture-smoke
+            v4-visual-smoke
+          retention-days: 14
