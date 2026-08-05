@@ -1,0 +1,71 @@
+name: Avatar v0.7 Frame Bake
+
+on:
+  push:
+    branches: [avatar-showcase-v0.7]
+    paths:
+      - 'avatar-v07/scripts/bake-frames.mjs'
+      - 'avatar-v07/scripts/verify-frames.mjs'
+      - 'avatar-v07/frame-presets.json'
+      - 'avatar-v07/tests/frame-manifest.test.mjs'
+      - '.github/workflows/avatar-v07-bake.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout isolated branch
+        uses: actions/checkout@v4
+        with:
+          ref: avatar-showcase-v0.7
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install frame tooling
+        run: npm install --no-save sharp
+        working-directory: avatar-v07
+
+      - name: Bake transparent semantic frames
+        run: node scripts/bake-frames.mjs | tee frame-bake-report.json
+        working-directory: avatar-v07
+        env:
+          AVATAR_ORIGIN: https://avatar-showcase-lab.vercel.app
+          AVATAR_RUNTIME_URL: https://ezvfqrhzucjvkwnnbjux.supabase.co/functions/v1/avatar-motion-runtime
+
+      - name: Verify baked frame files
+        run: |
+          node scripts/verify-frames.mjs | tee frame-verify-report.json
+          node --test tests/frame-manifest.test.mjs
+        working-directory: avatar-v07
+
+      - name: Commit generated frame set
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add avatar-v07/public/frames/formal-v1
+          if git diff --cached --quiet; then
+            echo 'No frame changes to commit.'
+          else
+            git commit -m 'chore: bake avatar v0.7 frames [skip ci]'
+            git push origin HEAD:avatar-showcase-v0.7
+          fi
+
+      - name: Upload bake evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: avatar-v07-frame-bake
+          path: |
+            avatar-v07/public/frames/formal-v1/
+            avatar-v07/frame-bake-report.json
+            avatar-v07/frame-verify-report.json
+          if-no-files-found: error
+          retention-days: 14

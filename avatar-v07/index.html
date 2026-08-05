@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b0d13">
+  <title>Avatar Showcase Lab v0.7</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="importmap">
+    {"imports":{"pixi.js":"https://cdn.jsdelivr.net/npm/pixi.js@8.19.0/dist/pixi.min.mjs"}}
+  </script>
+</head>
+<body>
+  <main id="app" class="app-shell">
+    <div class="scene-background" aria-hidden="true"></div>
+    <div class="scene-warmth" aria-hidden="true"></div>
+    <div class="scene-vignette" aria-hidden="true"></div>
+    <div class="character-shadow" aria-hidden="true"></div>
+    <section class="avatar-surface" aria-label="2.5D互动角色"></section>
+    <div class="foreground-occlusion" aria-hidden="true"></div>
+    <div class="foreground-bokeh" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+
+    <header class="showcase-brand">
+      <strong>Avatar Showcase</strong>
+      <span id="route-label">FRAME BLEND · v0.7</span>
+    </header>
+    <div class="showcase-status" id="showcase-status">正在载入关键帧…</div>
+
+    <aside class="studio-panel">
+      <div class="panel-head">
+        <div><b>AvatarRenderer</b><small>frame-blend · C-compatible boundary</small></div>
+        <a href="/showcase">打开展示页</a>
+      </div>
+      <label>动作状态</label>
+      <div class="button-grid">
+        <button data-state="idle">idle</button>
+        <button data-state="happy">happy</button>
+        <button data-state="listen">listen</button>
+        <button data-state="talk">talk</button>
+      </div>
+      <label>表情</label>
+      <div class="button-grid">
+        <button data-expression="neutral">neutral</button>
+        <button data-expression="soft-smile">soft smile</button>
+        <button data-expression="happy">happy</button>
+        <button data-expression="focused">focused</button>
+      </div>
+      <label class="toggle"><input id="autoplay" type="checkbox"> 自动演示</label>
+      <div class="range-list">
+        <label>角色比例 <output id="out-scale"></output><input id="scale" type="range" min="0.7" max="1.5" step="0.01"></label>
+        <label>水平位置 <output id="out-x"></output><input id="x" type="range" min="-320" max="320" step="1"></label>
+        <label>垂直位置 <output id="out-y"></output><input id="y" type="range" min="-160" max="180" step="1"></label>
+        <label>暖色强度 <output id="out-warmth"></output><input id="warmth" type="range" min="-0.2" max="0.4" step="0.01"></label>
+        <label>背景模糊 <output id="out-blur"></output><input id="blur" type="range" min="0" max="12" step="0.2"></label>
+        <label>背景视差 <output id="out-parallax"></output><input id="parallax" type="range" min="0" max="28" step="1"></label>
+        <label>曝光 <output id="out-exposure"></output><input id="exposure" type="range" min="0.5" max="1.5" step="0.01"></label>
+      </div>
+      <nav class="route-nav">
+        <a href="/studio">Studio</a>
+        <a href="/showcase">Showcase</a>
+        <a href="/compare">Compare</a>
+        <a href="/capture?time=12000">Capture</a>
+      </nav>
+    </aside>
+
+    <section class="compare-card">
+      <b>目标方向</b>
+      <span>高精度角色原画 · 暖色公寓 · 冷色夜景 · 关键帧平滑混合</span>
+    </section>
+  </main>
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>

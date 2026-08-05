@@ -1,0 +1,49 @@
+name: Avatar v0.7 Preview Startup Probe
+
+on:
+  push:
+    branches: [avatar-showcase-v0.7]
+    paths:
+      - 'avatar-v07/scripts/preview-startup-probe.mjs'
+      - '.github/workflows/avatar-v07-startup-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      AVATAR_URL: https://avatar-showcase-8zmi5auma-qujindai.vercel.app
+      AVATAR_ACCESS_URL: https://avatar-showcase-8zmi5auma-qujindai.vercel.app/?_vercel_share=jmxjQm295013W7sjE0kVLoC7VhsaitXG
+    steps:
+      - name: Checkout isolated branch
+        uses: actions/checkout@v4
+        with:
+          ref: avatar-showcase-v0.7
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+        working-directory: avatar-v07
+
+      - name: Probe Preview startup
+        run: node scripts/preview-startup-probe.mjs
+        working-directory: avatar-v07
+
+      - name: Upload startup evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: avatar-v07-preview-startup-probe
+          path: avatar-v07/avatar-v07-startup-probe/
+          if-no-files-found: error
+          retention-days: 14

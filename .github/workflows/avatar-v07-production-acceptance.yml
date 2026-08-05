@@ -1,0 +1,48 @@
+name: Avatar v0.7 Production Acceptance
+
+on:
+  push:
+    branches: [avatar-showcase-v0.7]
+    paths:
+      - '.github/workflows/avatar-v07-production-acceptance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      AVATAR_URL: https://avatar-showcase-lab.vercel.app
+      AVATAR_ASSET_COMMIT: b7ecb5ea48f8b50ada8e1b92bbf596208e9fef98
+    steps:
+      - name: Checkout isolated branch
+        uses: actions/checkout@v4
+        with:
+          ref: avatar-showcase-v0.7
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+        working-directory: avatar-v07
+
+      - name: Run fail-closed Production acceptance
+        run: node scripts/cloud-acceptance.mjs
+        working-directory: avatar-v07
+
+      - name: Upload Production evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: avatar-v07-production-acceptance
+          path: avatar-v07/avatar-v07-artifacts/
+          if-no-files-found: error
+          retention-days: 14

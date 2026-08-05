@@ -1,0 +1,44 @@
+name: Avatar v0.7 Blink Probe
+
+on:
+  push:
+    branches: [avatar-showcase-v0.7]
+    paths:
+      - 'avatar-v07/scripts/blink-probe.mjs'
+      - '.github/workflows/avatar-v07-blink-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: avatar-showcase-v0.7
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Sharp
+        run: npm install --no-save sharp
+        working-directory: avatar-v07
+
+      - name: Generate blink matrix
+        run: node scripts/blink-probe.mjs
+        working-directory: avatar-v07
+
+      - name: Upload blink evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: avatar-v07-blink-probe
+          path: avatar-v07/blink-probe-output/
+          if-no-files-found: error
+          retention-days: 14

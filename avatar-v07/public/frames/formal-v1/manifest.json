@@ -1,0 +1,243 @@
+{
+  "version": 1,
+  "characterId": "formal-v1",
+  "generatedAt": "2026-08-05T10:34:13.106Z",
+  "runtime": "https://ezvfqrhzucjvkwnnbjux.supabase.co/functions/v1/avatar-motion-runtime",
+  "sourceSha256": "057411c2cfe595f2bb12a32a4a59ad04e014b2acf2a33d8c8c2f90cda567b0b1",
+  "width": 1344,
+  "height": 1728,
+  "frames": {
+    "idle-open": {
+      "id": "idle-open",
+      "file": "./idle-open.webp",
+      "width": 1344,
+      "height": 1728,
+      "hasAlpha": true,
+      "bytes": 174684,
+      "sha256": "482818da955300d54a18c818b66132d3f6923d21bcf720e4e25bf9ed98cf0be6",
+      "expression": {
+        "pitch": 0,
+        "yaw": 0,
+        "roll": 0,
+        "blink": 0,
+        "eyebrow": 0,
+        "wink": 0,
+        "pupilX": 0,
+        "pupilY": 0,
+        "aaa": 0,
+        "eee": 0,
+        "woo": 0,
+        "smile": 0.05,
+        "cropFactor": 1.7
+      },
+      "runtimeElapsedMs": 0,
+      "differenceFromIdle": {
+        "meanAbsoluteDifference": 0,
+        "changedRatio": 0
+      }
+    },
+    "blink-half": {
+      "id": "blink-half",
+      "file": "./blink-half.webp",
+      "width": 1344,
+      "height": 1728,
+      "hasAlpha": true,
+      "bytes": 112262,
+      "sha256": "11339e921d6aeb6ceea36a9ac437e567343fe75d4746e580887f1e787494c778",
+      "expression": {
+        "pitch": 0,
+        "yaw": 0,
+        "roll": 0,
+        "blink": -10,
+        "eyebrow": 0,
+        "wink": 0,
+        "pupilX": 0,
+        "pupilY": 0,
+        "aaa": 0,
+        "eee": 0,
+        "woo": 0,
+        "smile": 0.05,
+        "cropFactor": 1.7
+      },
+      "runtimeElapsedMs": 3738,
+      "differenceFromIdle": {
+        "meanAbsoluteDifference": 2.385113249099794,
+        "changedRatio": 0.1609109186691652
+      }
+    },
+    "blink-closed": {
+      "id": "blink-closed",
+      "file": "./blink-closed.webp",
+      "width": 1344,
+      "height": 1728,
+      "hasAlpha": true,
+      "bytes": 112282,
+      "sha256": "8ad49492a55332e06797c32b40f2d1ca34857b8d7008d2c3118dfd4f8e2b2368",
+      "expression": {
+        "pitch": 0,
+        "yaw": 0,
+        "roll": 0,
+        "blink": -20,
+        "eyebrow": 0,
+        "wink": 0,
+        "pupilX": 0,
+        "pupilY": 0,
+        "aaa": 0,
+        "eee": 0,
+        "woo": 0,
+        "smile": 0.05,
+        "cropFactor": 1.7
+      },
+      "runtimeElapsedMs": 5241,
+      "differenceFromIdle": {
+        "meanAbsoluteDifference": 2.441486338458995,
+        "changedRatio": 0.17095929324661963
+      }
+    },
+    "happy": {
+      "id": "happy",
+      "file": "./happy.webp",
+      "width": 1344,
+      "height": 1728,
+      "hasAlpha": true,
+      "bytes": 110544,
+      "sha256": "250028aa64d30d7d63d04597418a759674a5315b6ddd31c78b5a3e19e4aeb9f3",
+      "expression": {
+        "pitch": -1,
+        "yaw": 2,
+        "roll": 1,
+        "blink": -1,
+        "eyebrow": 4,
+        "wink": 0,
+        "pupilX": 0,
+        "pupilY": -1,
+        "aaa": 0,
+        "eee": 0,
+        "woo": 0,
+        "smile": 0.78,
+        "cropFactor": 1.7
+      },
+      "runtimeElapsedMs": 1659,
+      "differenceFromIdle": {
+        "meanAbsoluteDifference": 3.656739429471634,
+        "changedRatio": 0.18878084123309818
+      }
+    },
+    "listen": {
+      "id": "listen",
+      "file": "./listen.webp",
+      "width": 1344,
+      "height": 1728,
+      "hasAlpha": true,
+      "bytes": 109480,
+      "sha256": "cde0bf2e9e140a1e15b95edbcaa7669398a37d91862cfde0c483d60ab84f62b5",
+      "expression": {
+        "pitch": -3,
+        "yaw": 8,
+        "roll": 2,
+        "blink": -1,
+        "eyebrow": 2,
+        "wink": 0,
+        "pupilX": 2,
+        "pupilY": -1,
+        "aaa": 0,
+        "eee": 0,
+        "woo": 0,
+        "smile": 0.18,
+        "cropFactor": 1.7
+      },
+      "runtimeElapsedMs": 1669,
+      "differenceFromIdle": {
+        "meanAbsoluteDifference": 4.686465739362875,
+        "changedRatio": 0.21272126230893593
+      }
+    },
+    "mouth-a": {
+      "id": "mouth-a",
+      "file": "./mouth-a.webp",
+      "width": 1344,
+      "height": 1728,
+      "hasAlpha": true,
+      "bytes": 111070,
+      "sha256": "3c87f4d6cd320689712cfd21e6531c007f85aefc5ecb0079c990d26ae126e843",
+      "expression": {
+        "pitch": 0,
+        "yaw": 0,
+        "roll": 0,
+        "blink": -1,
+        "eyebrow": 1,
+        "wink": 0,
+        "pupilX": 0,
+        "pupilY": 0,
+        "aaa": 42,
+        "eee": 0,
+        "woo": 0,
+        "smile": 0.2,
+        "cropFactor": 1.7
+      },
+      "runtimeElapsedMs": 1533,
+      "differenceFromIdle": {
+        "meanAbsoluteDifference": 3.2209761146935625,
+        "changedRatio": 0.18291515101410935
+      }
+    },
+    "mouth-e": {
+      "id": "mouth-e",
+      "file": "./mouth-e.webp",
+      "width": 1344,
+      "height": 1728,
+      "hasAlpha": true,
+      "bytes": 112664,
+      "sha256": "da0c721c2600a8fda1386b366fc12af25133e67ee9f27047485fe4c2b0161146",
+      "expression": {
+        "pitch": 0,
+        "yaw": 0,
+        "roll": 0,
+        "blink": -1,
+        "eyebrow": 1,
+        "wink": 0,
+        "pupilX": 0,
+        "pupilY": 0,
+        "aaa": 0,
+        "eee": 12,
+        "woo": 0,
+        "smile": 0.18,
+        "cropFactor": 1.7
+      },
+      "runtimeElapsedMs": 12582,
+      "differenceFromIdle": {
+        "meanAbsoluteDifference": 2.351100197264477,
+        "changedRatio": 0.15701098388815402
+      }
+    },
+    "mouth-u": {
+      "id": "mouth-u",
+      "file": "./mouth-u.webp",
+      "width": 1344,
+      "height": 1728,
+      "hasAlpha": true,
+      "bytes": 112632,
+      "sha256": "46f320f32be4b4dd7f326847f1fb168e77a77d5e78fb34d01a539e509adc4915",
+      "expression": {
+        "pitch": 0,
+        "yaw": 0,
+        "roll": 0,
+        "blink": -1,
+        "eyebrow": 1,
+        "wink": 0,
+        "pupilX": 0,
+        "pupilY": 0,
+        "aaa": 0,
+        "eee": 0,
+        "woo": 12,
+        "smile": 0.16,
+        "cropFactor": 1.7
+      },
+      "runtimeElapsedMs": 10925,
+      "differenceFromIdle": {
+        "meanAbsoluteDifference": 2.5197614684376837,
+        "changedRatio": 0.16994598765432098
+      }
+    }
+  }
+}
