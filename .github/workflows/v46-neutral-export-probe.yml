@@ -1,0 +1,78 @@
+name: V4.6 Neutral Export Probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - v46-neutral-export-probe.mjs
+      - .github/workflows/v46-neutral-export-probe.yml
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download generated VRM artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: v46-neurohacker-generated-models
+          path: generated
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: QuJindai/mattpocock-task-1784779676874
+          run-id: 31020717434
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Reconstruct neutral V4.5 probe page
+        run: |
+          mkdir -p site/models
+          cat payloads/v45/payload-1.txt payloads/v45/payload-2.txt payloads/v45/payload-3.txt payloads/v45/payload-4.txt \
+            | tr -d '\r\n ' > /tmp/v45.b64
+          printf '%s' "$(cat /tmp/v45.b64)" | base64 -d | gzip -d > site/index.html
+          python - <<'PY'
+          from pathlib import Path
+          page=Path('site/index.html')
+          source=page.read_text()
+          old_rotate='VRMUtils.rotateVRM0(vrm);VRMUtils.removeUnnecessaryVertices(gltf.scene);'
+          new_rotate="if(!url.includes('/models/v46-'))VRMUtils.rotateVRM0(vrm);VRMUtils.removeUnnecessaryVertices(gltf.scene);"
+          assert old_rotate in source
+          source=source.replace(old_rotate,new_rotate,1)
+          old_loop='if(vrm){animate(t,dt);vrm.update(dt)}'
+          new_loop="if(vrm&&!state.url.includes('/models/v46-')){animate(t,dt);vrm.update(dt)}"
+          assert old_loop in source
+          source=source.replace(old_loop,new_loop,1)
+          page.write_text(source)
+          assert "!state.url.includes('/models/v46-')" in page.read_text()
+          PY
+          cp generated/v46-neurohacker-export/v46-layered.vrm site/models/
+          cp generated/v46-neurohacker-export/v46-sweater.vrm site/models/
+          cp generated/v46-neurohacker-export/v46-casual.vrm site/models/
+      - name: Install browser controller
+        run: |
+          npm install playwright wait-on
+          google-chrome --version || google-chrome-stable --version
+      - name: Start neutral test site
+        run: |
+          cd site
+          python3 -m http.server 4173 --bind 127.0.0.1 > ../v46-neutral-server.log 2>&1 &
+          cd ..
+          npx wait-on http://127.0.0.1:4173 --timeout 120000
+      - name: Render raw exported T Poses
+        env:
+          LOCAL_V45_URL: http://127.0.0.1:4173
+        run: node v46-neutral-export-probe.mjs
+      - name: Upload neutral evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v46-neutral-export-probe
+          path: |
+            v46-neutral-export-probe
+            v46-neutral-server.log
+          retention-days: 14
