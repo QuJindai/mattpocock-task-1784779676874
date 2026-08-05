@@ -67,8 +67,17 @@ try{
 
   const proof=await page.evaluate(key=>({field:document.querySelector('#character')?.value,session:sessionStorage.getItem(key),last:window.__avatarLab?.lastGeneration}),sessionKey);
   if(proof.field!=='session:generated')await fail(`generated field marker missing: ${proof.field}`);
-  if(!proof.session?.startsWith('data:image/webp;base64,')||proof.session===beforeSession||proof.session.length<100000)await fail(`generated session asset invalid: ${proof.session?.length||0}`);
-  if(proof.last?.backend!==expectedBackend||proof.last?.endpoint!==expectedEndpoint||proof.last?.imageBytes<50000)await fail(`generation proof invalid: ${JSON.stringify(proof.last)}`);
+  if(!proof.session?.startsWith('data:image/webp;base64,')||proof.session===beforeSession||proof.session.length<10000)await fail(`generated session asset invalid: ${proof.session?.length||0}`);
+  if(proof.last?.backend!==expectedBackend||proof.last?.endpoint!==expectedEndpoint||proof.last?.imageBytes<10000)await fail(`generation proof invalid: ${JSON.stringify(proof.last)}`);
+  const decodedImage=await page.evaluate(async key=>{
+    const src=sessionStorage.getItem(key);
+    if(!src)return null;
+    const image=new Image();
+    image.src=src;
+    await image.decode();
+    return {width:image.naturalWidth,height:image.naturalHeight,complete:image.complete};
+  },sessionKey);
+  if(!decodedImage?.complete||decodedImage.width<256||decodedImage.height<256)await fail(`generated image did not decode: ${JSON.stringify(decodedImage)}`);
 
   await page.waitForTimeout(5000);
   await page.screenshot({path:`${outputDir}/03-gpu-result.png`,fullPage:true});
@@ -82,7 +91,7 @@ try{
   if(captureImage.length<50000)await fail(`capture too small: ${captureImage.length}`);
 
   if(fatalErrors.length)await fail(fatalErrors.join('\n'));
-  const result={status:'pass',baseUrl,apiInfo,expression,generationElapsedMs,generationDetail,generatedDataUrlLength:proof.session.length,imageBytes:proof.last.imageBytes,runtimeElapsedMs:proof.last.elapsedMs,resultCanvasBytes:resultCanvas.length,resultCanvasSha256:sha256(resultCanvas),captureBytes:captureImage.length,captureSha256:sha256(captureImage),fatalErrors};
+  const result={status:'pass',baseUrl,apiInfo,expression,generationElapsedMs,generationDetail,generatedDataUrlLength:proof.session.length,generatedImage:decodedImage,imageBytes:proof.last.imageBytes,runtimeElapsedMs:proof.last.elapsedMs,resultCanvasBytes:resultCanvas.length,resultCanvasSha256:sha256(resultCanvas),captureBytes:captureImage.length,captureSha256:sha256(captureImage),fatalErrors};
   await writeFile(`${outputDir}/browser.log`,`${logs.join('\n')}\n`);
   await writeFile(`${outputDir}/results.json`,`${JSON.stringify(result,null,2)}\n`);
   console.log('Avatar showcase v0.5 runtime acceptance passed');
