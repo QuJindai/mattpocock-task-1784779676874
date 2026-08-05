@@ -1,0 +1,70 @@
+name: V4.4 Acceptance
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/v44-acceptance.yml
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Chromium
+        run: |
+          npm init -y
+          npm install playwright
+          npx playwright install --with-deps chromium
+      - name: Prepare V4.4 assertions
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          wave = Path('v4-wave-gesture-smoke.mjs')
+          s = wave.read_text()
+          s = s.replace('visual-alicia-v4-3-20260805', 'visual-alicia-v4-4-20260805')
+          s = s.replace("mode: 'capture',\n    action:", "mode: 'capture',\n    framing: 'standard',\n    action:")
+          wave.write_text(s)
+
+          closeup = Path('v4-closeup-smoke.mjs')
+          s = closeup.read_text().replace('visual-alicia-v4-3-20260805', 'visual-alicia-v4-4-20260805')
+          closeup.write_text(s)
+
+          visual = Path('v4-visual-smoke.mjs')
+          s = visual.read_text()
+          s = s.replace('visual-alicia-v4-3-20260805', 'visual-alicia-v4-4-20260805')
+          s = s.replace("idle: 'mode=capture&action=idle", "idle: 'mode=capture&framing=standard&action=idle")
+          s = s.replace("wave: 'mode=capture&action=wave", "wave: 'mode=capture&framing=standard&action=wave")
+          s = s.replace(
+              "closeup: 'mode=capture&action=idle&emotion=relaxed&distance=2.05&height=1.42&exposure=0.66&scale=0.96&fov=29&x=0'",
+              "closeup: 'mode=capture&framing=closeup&action=idle&emotion=relaxed&distance=2.35&height=1.36&exposure=0.66&scale=0.98&fov=30&x=0'",
+          )
+          visual.write_text(s)
+          PY
+          node --check v4-wave-gesture-smoke.mjs
+          node --check v4-closeup-smoke.mjs
+          node --check v4-visual-smoke.mjs
+      - name: Run all V4.4 gates
+        run: |
+          set +e
+          status=0
+          node v4-closeup-smoke.mjs || status=1
+          node v4-wave-gesture-smoke.mjs || status=1
+          node v4-visual-smoke.mjs || status=1
+          exit $status
+      - name: Upload V4.4 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vrm-v44-acceptance
+          path: |
+            v4-closeup-smoke
+            v4-wave-gesture-smoke
+            v4-visual-smoke
+          retention-days: 14
