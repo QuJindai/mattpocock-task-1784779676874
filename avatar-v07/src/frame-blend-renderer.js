@@ -12,6 +12,10 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, Number.isFinite(value) ? value : 0));
 }
 
+function isRapidFrame(frameId) {
+  return frameId?.startsWith('mouth-') || frameId?.startsWith('blink-');
+}
+
 export class FrameBlendRenderer {
   #adapter;
   #view = null;
@@ -26,6 +30,7 @@ export class FrameBlendRenderer {
   #activeLayer = 0;
   #transitionElapsed = 0;
   #transitionMs;
+  #activeTransitionMs = 0;
   #blinkSequence = buildBlinkSequence();
   #blinkDuration = sequenceDuration(this.#blinkSequence);
   #talkSequence = buildTalkSequence();
@@ -36,6 +41,7 @@ export class FrameBlendRenderer {
     }
     this.#adapter = adapter;
     this.#transitionMs = Math.max(0, transitionMs);
+    this.#activeTransitionMs = this.#transitionMs;
   }
 
   async mount(surface) {
@@ -53,6 +59,7 @@ export class FrameBlendRenderer {
     this.#activeLayer = 0;
     this.#currentFrame = 'idle-open';
     this.#targetFrame = 'idle-open';
+    this.#activeTransitionMs = this.#transitionMs;
     this.#view.setFrame(0, this.#frames['idle-open']);
     this.#view.setFrame(1, this.#frames['idle-open']);
     this.#view.setOpacity(0, 1);
@@ -96,11 +103,17 @@ export class FrameBlendRenderer {
     return STATE_FRAME[this.#state] || 'idle-open';
   }
 
+  #transitionDurationFor(frameId) {
+    if (this.#transitionMs === 0) return 0;
+    return isRapidFrame(frameId) ? Math.min(this.#transitionMs, 48) : this.#transitionMs;
+  }
+
   #startTransition(frameId) {
     if (!this.#frames[frameId]) frameId = 'idle-open';
     if (frameId === this.#targetFrame) return;
     this.#targetFrame = frameId;
     this.#transitionElapsed = 0;
+    this.#activeTransitionMs = this.#transitionDurationFor(frameId);
     const inactiveLayer = 1 - this.#activeLayer;
     this.#view.setFrame(inactiveLayer, this.#frames[frameId]);
     this.#view.setOpacity(inactiveLayer, 0);
@@ -108,7 +121,7 @@ export class FrameBlendRenderer {
 
   #advanceTransition(deltaMs) {
     if (!this.#targetFrame || this.#targetFrame === this.#currentFrame) return;
-    if (this.#transitionMs === 0) {
+    if (this.#activeTransitionMs === 0) {
       const inactiveLayer = 1 - this.#activeLayer;
       this.#view.setOpacity(this.#activeLayer, 0);
       this.#view.setOpacity(inactiveLayer, 1);
@@ -117,7 +130,7 @@ export class FrameBlendRenderer {
       return;
     }
     this.#transitionElapsed += deltaMs;
-    const progress = clamp(this.#transitionElapsed / this.#transitionMs, 0, 1);
+    const progress = clamp(this.#transitionElapsed / this.#activeTransitionMs, 0, 1);
     const inactiveLayer = 1 - this.#activeLayer;
     this.#view.setOpacity(this.#activeLayer, 1 - progress);
     this.#view.setOpacity(inactiveLayer, progress);
@@ -163,6 +176,7 @@ export class FrameBlendRenderer {
     this.#frames = {};
     this.#currentFrame = null;
     this.#targetFrame = null;
+    this.#activeTransitionMs = this.#transitionMs;
   }
 
   get diagnostics() {
@@ -172,6 +186,7 @@ export class FrameBlendRenderer {
       expression: this.#expression,
       currentFrame: this.#currentFrame,
       targetFrame: this.#targetFrame,
+      activeTransitionMs: this.#activeTransitionMs,
       elapsedMs: this.#elapsedMs,
     };
   }
