@@ -1,0 +1,66 @@
+name: V4.8 Motion Preview
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/v48-liveliness]
+    paths:
+      - v48-build.py
+      - test_v48_build.py
+      - v48-motion-smoke.mjs
+      - .github/workflows/v48-motion-preview.yml
+
+jobs:
+  motion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/v48-liveliness
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run source-lock tests and build
+        run: |
+          python test_v48_build.py -v
+          python v48-build.py
+          node --check v48-motion-smoke.mjs
+      - name: Install browser controller
+        run: npm install playwright wait-on
+      - name: Create unthrottled Chrome launcher
+        run: |
+          cat > /tmp/chrome-v48 <<'SH'
+          #!/bin/sh
+          exec /usr/bin/google-chrome \
+            --disable-background-timer-throttling \
+            --disable-renderer-backgrounding \
+            --disable-backgrounding-occluded-windows \
+            "$@"
+          SH
+          chmod +x /tmp/chrome-v48
+      - name: Start V4.8 candidate
+        run: |
+          cd v48-site
+          python3 -m http.server 4173 --bind 127.0.0.1 > ../v48-motion-server.log 2>&1 &
+          cd ..
+          npx wait-on http://127.0.0.1:4173 --timeout 120000
+      - name: Run V4.8 motion gate
+        env:
+          V48_URL: http://127.0.0.1:4173
+          V48_OUT: v48-liveliness-smoke
+          CHROME_PATH: /tmp/chrome-v48
+        run: node v48-motion-smoke.mjs
+      - name: Upload motion evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v48-motion-preview
+          path: |
+            v48-liveliness-smoke
+            v48-site/metadata.json
+            v48-motion-server.log
+          retention-days: 14
