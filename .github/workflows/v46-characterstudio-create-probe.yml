@@ -1,0 +1,33 @@
+name: V4.6 CharacterStudio Create Probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - v46-characterstudio-create-probe.mjs
+      - .github/workflows/v46-characterstudio-create-probe.yml
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright controller
+        run: |
+          npm init -y
+          npm install playwright
+          google-chrome --version || google-chrome-stable --version
+      - name: Probe create-character page
+        run: node v46-characterstudio-create-probe.mjs
+      - name: Upload create-page evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v46-characterstudio-create-probe
+          path: v46-characterstudio-create-probe
+          retention-days: 14
