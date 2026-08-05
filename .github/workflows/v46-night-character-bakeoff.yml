@@ -42,10 +42,12 @@ jobs:
           page=Path('site/index.html')
           source=page.read_text()
           old='VRMUtils.rotateVRM0(vrm);VRMUtils.removeUnnecessaryVertices(gltf.scene);'
-          new="if(!url.includes('/models/v46-'))VRMUtils.rotateVRM0(vrm);VRMUtils.removeUnnecessaryVertices(gltf.scene);"
+          new="if(url.includes('/models/v46-'))vrm.scene.rotation.z=Math.PI;else VRMUtils.rotateVRM0(vrm);VRMUtils.removeUnnecessaryVertices(gltf.scene);"
           assert old in source
           page.write_text(source.replace(old,new,1))
-          assert "!url.includes('/models/v46-')" in page.read_text()
+          patched=page.read_text()
+          assert "vrm.scene.rotation.z=Math.PI" in patched
+          assert "else VRMUtils.rotateVRM0(vrm)" in patched
           PY
           cp generated/v46-neurohacker-export/v46-layered.vrm site/models/
           cp generated/v46-neurohacker-export/v46-sweater.vrm site/models/
