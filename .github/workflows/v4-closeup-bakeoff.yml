@@ -1,0 +1,33 @@
+name: V4 Closeup Bake-off
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - v4-closeup-bakeoff.mjs
+      - .github/workflows/v4-closeup-bakeoff.yml
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Chromium
+        run: |
+          npm init -y
+          npm install playwright
+          npx playwright install --with-deps chromium
+      - name: Search Alicia closeup parameters
+        run: node v4-closeup-bakeoff.mjs
+      - name: Upload closeup comparison
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vrm-v4-closeup-bakeoff
+          path: v4-closeup-bakeoff
+          retention-days: 14
