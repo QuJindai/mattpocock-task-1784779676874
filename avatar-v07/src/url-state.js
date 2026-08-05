@@ -13,6 +13,10 @@ export const DEFAULT_URL_STATE = Object.freeze({
   blur: 1.2,
   parallax: 10,
   exposure: 1,
+  voice: '',
+  rate: 1,
+  pitch: 1,
+  volume: 1,
   time: null,
 });
 
@@ -24,6 +28,9 @@ const LIMITS = Object.freeze({
   blur: [0, 12],
   parallax: [0, 28],
   exposure: [0.5, 1.5],
+  rate: [0.6, 1.6],
+  pitch: [0.7, 1.4],
+  volume: [0, 1],
   time: [0, 86_400_000],
 });
 
@@ -62,6 +69,10 @@ export function parseUrlState(search = '') {
     blur: clampNumber(params.get('blur'), DEFAULT_URL_STATE.blur, LIMITS.blur),
     parallax: clampNumber(params.get('parallax'), DEFAULT_URL_STATE.parallax, LIMITS.parallax),
     exposure: clampNumber(params.get('exposure'), DEFAULT_URL_STATE.exposure, LIMITS.exposure),
+    voice: String(params.get('voice') || '').trim(),
+    rate: clampNumber(params.get('rate'), DEFAULT_URL_STATE.rate, LIMITS.rate),
+    pitch: clampNumber(params.get('pitch'), DEFAULT_URL_STATE.pitch, LIMITS.pitch),
+    volume: clampNumber(params.get('volume'), DEFAULT_URL_STATE.volume, LIMITS.volume),
     time: timeRaw === null ? null : clampNumber(timeRaw, 0, LIMITS.time),
   };
 }
@@ -74,9 +85,11 @@ export function serializeUrlState(state) {
   params.set('state', normalized.state);
   params.set('expression', normalized.expression);
   params.set('autoplay', normalized.autoplay ? '1' : '0');
-  for (const key of ['scale', 'x', 'y', 'warmth', 'blur', 'parallax', 'exposure']) {
+  for (const key of ['scale', 'x', 'y', 'warmth', 'blur', 'parallax', 'exposure', 'rate', 'pitch', 'volume']) {
     params.set(key, String(normalized[key]));
   }
+  const voice = String(normalized.voice || '').trim();
+  if (voice) params.set('voice', voice);
   if (normalized.time !== null && normalized.time !== undefined) {
     params.set('time', String(normalized.time));
   }
