@@ -1,0 +1,32 @@
+name: V4.6 Avatar A Material Probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - v46-avatar-a-material-probe.mjs
+      - .github/workflows/v46-avatar-a-material-probe.yml
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install browser controller
+        run: |
+          npm install playwright
+          google-chrome --version || google-chrome-stable --version
+      - name: Probe Avatar A materials
+        run: node v46-avatar-a-material-probe.mjs
+      - name: Upload material evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v46-avatar-a-material-probe
+          path: v46-avatar-a-material-probe
+          retention-days: 14
