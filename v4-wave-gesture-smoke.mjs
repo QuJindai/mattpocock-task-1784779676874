@@ -1,5 +1,5 @@
 import { chromium } from 'playwright';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, stat } from 'node:fs/promises';
 
 const baseUrl = process.env.VRM_URL || 'https://vrm-showcase-lab.vercel.app';
 const outputDir = 'v4-wave-gesture-smoke';
@@ -52,15 +52,33 @@ try {
     const project = name => {
       const node = vrm.humanoid?.getNormalizedBoneNode(name);
       if (!node) return null;
-      const position = new THREE.Vector3();
-      node.getWorldPosition(position);
-      const world = position.toArray();
-      position.project(camera);
+      node.updateMatrixWorld(true);
+
+      const worldMatrix = node.matrixWorld.elements;
+      const x = worldMatrix[12];
+      const y = worldMatrix[13];
+      const z = worldMatrix[14];
+      const view = camera.matrixWorldInverse.elements;
+      const projection = camera.projectionMatrix.elements;
+
+      const viewX = view[0] * x + view[4] * y + view[8] * z + view[12];
+      const viewY = view[1] * x + view[5] * y + view[9] * z + view[13];
+      const viewZ = view[2] * x + view[6] * y + view[10] * z + view[14];
+      const viewW = view[3] * x + view[7] * y + view[11] * z + view[15];
+
+      const clipX = projection[0] * viewX + projection[4] * viewY + projection[8] * viewZ + projection[12] * viewW;
+      const clipY = projection[1] * viewX + projection[5] * viewY + projection[9] * viewZ + projection[13] * viewW;
+      const clipZ = projection[2] * viewX + projection[6] * viewY + projection[10] * viewZ + projection[14] * viewW;
+      const clipW = projection[3] * viewX + projection[7] * viewY + projection[11] * viewZ + projection[15] * viewW;
+
+      const ndcX = clipX / clipW;
+      const ndcY = clipY / clipW;
+      const ndcZ = clipZ / clipW;
       return {
-        world,
-        ndc: position.toArray(),
-        x: (position.x + 1) * 0.5 * width,
-        y: (1 - position.y) * 0.5 * height,
+        world: [x, y, z],
+        ndc: [ndcX, ndcY, ndcZ],
+        x: (ndcX + 1) * 0.5 * width,
+        y: (1 - ndcY) * 0.5 * height,
       };
     };
 
@@ -104,7 +122,7 @@ try {
     if (metrics.buildId !== expectedBuild) {
       errors.push(`wrong build: expected ${expectedBuild}, got ${metrics.buildId}`);
     }
-    const { head, shoulder, elbow, hand, elbowAngle, width, height, normalized } = metrics;
+    const { head, shoulder, elbow, hand, elbowAngle, width, height } = metrics;
     if (![head, shoulder, elbow, hand].every(Boolean)) {
       errors.push(`required wave bones unavailable: ${JSON.stringify({ head, shoulder, elbow, hand })}`);
     } else {
@@ -142,7 +160,7 @@ try {
   await browser.close();
 }
 
-if (!(await import('node:fs/promises')).stat(`${outputDir}/results.json`).catch(() => null)) {
+if (!(await stat(`${outputDir}/results.json`).catch(() => null))) {
   await writeFile(`${outputDir}/results.json`, `${JSON.stringify({ expectedBuild, errors }, null, 2)}\n`, 'utf8');
 }
 
