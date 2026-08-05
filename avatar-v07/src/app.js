@@ -1,5 +1,6 @@
 import { AvatarController } from './avatar-controller.js';
 import { DeterministicClock } from './deterministic-clock.js';
+import { splitFrameDelta } from './frame-delta.js';
 import { createPixiAdapter } from './pixi-adapter.js';
 import { createAvatarRenderer } from './renderer-factory.js';
 import { ShowcaseTimeline } from './showcase-timeline.js';
@@ -218,17 +219,18 @@ function updateRouteStateFromTimeline() {
   if (mode === 'showcase') syncQuery();
 }
 
-function renderStep(deltaMs) {
-  clock.tick(deltaMs);
-  timeline.tick(deltaMs);
-  controller.update(deltaMs);
+function renderStep(timelineDeltaMs, rendererDeltaMs = timelineDeltaMs) {
+  clock.tick(timelineDeltaMs);
+  timeline.tick(timelineDeltaMs);
+  controller.update(rendererDeltaMs);
   updateRouteStateFromTimeline();
 }
 
 function animationLoop(now) {
-  const delta = Math.min(50, Math.max(0, now - lastFrameTime));
+  const rawDeltaMs = Math.max(0, now - lastFrameTime);
   lastFrameTime = now;
-  renderStep(delta);
+  const { timelineDeltaMs, rendererDeltaMs } = splitFrameDelta(rawDeltaMs);
+  renderStep(timelineDeltaMs, rendererDeltaMs);
   window.__avatarLab.ready = true;
   requestAnimationFrame(animationLoop);
 }
@@ -282,7 +284,7 @@ if (mode === 'capture') {
   const fixedTime = state.time ?? 0;
   timeline.setPhase(state.state);
   timeline.setAutoplay(false);
-  renderStep(fixedTime);
+  renderStep(fixedTime, fixedTime);
   window.__avatarLab.ready = true;
   document.documentElement.dataset.captureReady = 'true';
 } else {
