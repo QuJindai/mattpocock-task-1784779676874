@@ -57,3 +57,21 @@ test('talk state selects mouth frames from lip sync', async () => {
   renderer.update(16);
   assert.ok(adapter.events.some((event) => event[0] === 'setFrame' && /mouth-a/.test(event[2])));
 });
+
+test('default renderer completes all rapid talk-frame transitions', async () => {
+  const adapter = createFakeAdapter();
+  const renderer = new FrameBlendRenderer({ adapter });
+  await renderer.mount({});
+  await renderer.loadCharacter(character);
+  renderer.setState('listen');
+  renderer.update(200);
+  renderer.setState('talk');
+  const completed = new Set();
+  for (let index = 0; index < 24; index += 1) {
+    renderer.update(70);
+    completed.add(renderer.diagnostics.currentFrame);
+  }
+  assert.ok(completed.has('mouth-a'), `missing mouth-a: ${[...completed].join(',')}`);
+  assert.ok(completed.has('mouth-e'), `missing mouth-e: ${[...completed].join(',')}`);
+  assert.ok(completed.has('mouth-u'), `missing mouth-u: ${[...completed].join(',')}`);
+});
