@@ -1,0 +1,42 @@
+name: Gradio Legacy API Probe
+
+on:
+  push:
+    branches: [avatar-showcase-lab]
+    paths:
+      - gradio-probe.mjs
+      - package.json
+      - .github/workflows/gradio-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install pinned client
+        run: npm install
+
+      - name: Probe LivePortrait API
+        run: npm run probe:gradio
+
+      - name: Upload probe result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradio-legacy-probe
+          path: gradio-probe-results.json
+          if-no-files-found: warn
+          retention-days: 7
