@@ -1,0 +1,71 @@
+name: Avatar v0.7 Isolated Cloud Acceptance
+
+on:
+  push:
+    branches: [avatar-showcase-v0.7]
+    paths:
+      - 'avatar-v07/index.html'
+      - 'avatar-v07/styles.css'
+      - 'avatar-v07/src/**'
+      - 'avatar-v07/public/frames/**'
+      - 'avatar-v07/scripts/cloud-acceptance.mjs'
+      - 'avatar-v07/scripts/static-server.mjs'
+      - '.github/workflows/avatar-v07-isolated-acceptance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      AVATAR_URL: http://127.0.0.1:3000
+      PORT: 3000
+      HOST: 127.0.0.1
+    steps:
+      - name: Checkout isolated branch
+        uses: actions/checkout@v4
+        with:
+          ref: avatar-showcase-v0.7
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+        working-directory: avatar-v07
+
+      - name: Start isolated static server
+        run: |
+          node scripts/static-server.mjs > isolated-server.log 2>&1 &
+          echo $! > isolated-server.pid
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3000/showcase >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat isolated-server.log
+          exit 1
+        working-directory: avatar-v07
+
+      - name: Run fail-closed isolated acceptance
+        run: node scripts/cloud-acceptance.mjs
+        working-directory: avatar-v07
+
+      - name: Upload isolated acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: avatar-v07-isolated-acceptance
+          path: |
+            avatar-v07/avatar-v07-artifacts/
+            avatar-v07/isolated-server.log
+          if-no-files-found: error
+          retention-days: 14
